@@ -24,15 +24,6 @@ Built with **n8n** + LLMs + Apify + PhantomBuster.
 - **Notifications**: Telegram, Gmail
 - **Deployment**: n8n.cloud + self-hosted option
 
-## 📸 Screenshots
-
-![google-sheets](screenshots/google-sheets.png)
-![cover-letter-example](screenshots/cover-letter-example.png)
-![telegram-notification](screenshots/telegram-notification.png)
-![gmail-notification-warning](screenshots/gmail-notification-warning.png)
-![gmail-notification-error](screenshots/gmail-notification-error.png)
-
-
 
 ## 🚀 Quick Start
 
@@ -63,3 +54,11 @@ This project showcases:
 - Web scraping + data processing pipelines
 - Error handling and fallback systems
 - Practical AI application in real life
+
+## 📸 Screenshots
+
+![google-sheets](screenshots/google-sheets.png)
+![cover-letter-example](screenshots/cover-letter-example.png)
+![telegram-notification](screenshots/telegram-notification.png)
+![gmail-notification-warning](screenshots/gmail-notification-warning.png)
+![gmail-notification-error](screenshots/gmail-notification-error.png)
