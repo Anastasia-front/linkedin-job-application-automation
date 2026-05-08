@@ -1,0 +1,15 @@
+# n8n
+*.log
+.DS_Store
+.env
+credentials/
+node_modules/
+
+# Sensitive data
+workflow-*.json.bak
+*.key
+*.pem
+
+# Temporary
+temp/
+cache/

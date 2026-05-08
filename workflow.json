@@ -1,0 +1,1478 @@
+{
+  "name": "LinkedIn Job Application Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        160
+      ],
+      "id": "b84f3693-9134-46a9-b61e-2ad7b039c89f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $('Run an Actor').item.json.defaultDatasetId }}",
+        "offset": {},
+        "options": {},
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        512,
+        -64
+      ],
+      "id": "65643613-52fe-4f14-ae94-9126e7a9d0ae",
+      "name": "Get dataset items",
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "a3GDaRMoztXHGHTC",
+          "name": "Apify OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc",
+          "mode": "list",
+          "cachedResultName": "n8n AI job apply",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Vacancies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.Title }}",
+            "Company": "={{ $json.Company }}",
+            "Location": "={{ $json.Location }}",
+            "Description": "={{ $json.Description }}",
+            "Salary": "={{ $json.Salary }}",
+            "Date": "={{ $json.Date }}",
+            "Score": "={{ $json.Score }}",
+            "Cover Letter": "={{ $json['Cover Letter'] }}",
+            "Reason": "={{ $json.Reason }}",
+            "Keywords": "={{ $json.Keywords }}",
+            "Link": "={{ $json.Link }}",
+            "Unique ID": "={{ $json['Job ID'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Unique ID",
+              "displayName": "Unique ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Keywords",
+              "displayName": "Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cover Letter",
+              "displayName": "Cover Letter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Salary",
+              "displayName": "Salary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        800
+      ],
+      "id": "02b2909e-225d-49c7-88c1-516decd0af29",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x8Ck5u2Qo1V4wUlR",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"Job ID\": {{$json.jobId || ''}},\n  \"Title\": \"{{ $json.title || $json.jobTitle || 'No title' }}\",\n  \"Company\": \"{{ $json.hiringOrganization?.name || $json.company || $json.companyName || 'No company' }}\",\n  \"Location\": \"{{ $json.jobLocation?.address?.addressLocality || $json.location || $json.city || $json.jobLocation || 'No location' }}\",\n  \"Date\": \"{{ $json.date }}\",\n  \"Description\": \"{{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || '-') }}\",\n  \"Employment Type\": \"{{ $json.employmentType }}\",\n  \"Salary\": \"{{  $json.salary }}\",\n  \"Link\": \"{{ $json.link }}\",\n  \"Score\": \"{{ $json.score }}\",\n  \"Cover Letter\": \"{{ $json.coverLetter }}\",\n  \"Reason\": \"{{ $json.reason }}\",\n  \"Keywords\": \"{{ $json.keywords }}\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        416
+      ],
+      "id": "2874a2d7-06ee-4f0b-b39a-0a0dbbf86142",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        400
+      ],
+      "id": "17e0cd00-0863-457d-b7fb-e1dfff14e575",
+      "name": "Vacancy",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"jobId\": \"{{$('Get the output of an agent').item.json.jobId || $json.identifier?.value || $json.url || $json.jobUrl || $json.linkedinUrl || $json['@id'] }}\"\n}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        400
+      ],
+      "id": "2e725ec3-0972-41fc-842b-f95bdbc9a294",
+      "name": "Extract Job ID"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc",
+          "mode": "list",
+          "cachedResultName": "n8n AI job apply",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Vacancies",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bmn0Y2a0DA07ORmKuXM_lqRjzL6Glzl3WIBw3cnlxmc/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Unique ID",
+              "lookupValue": "={{ $json.jobId }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        288,
+        608
+      ],
+      "id": "582583f0-3caa-49a8-8e20-ebb0e49f7bcc",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x8Ck5u2Qo1V4wUlR",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c6e552d2-6881-436d-b22b-8ba00431a58d",
+              "leftValue": "={{Object.keys($node[\"Get row(s) in sheet\"].json || {}).length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        512,
+        608
+      ],
+      "id": "098a3f3b-b35f-47a5-8121-e5feb266f629",
+      "name": "Deduplication Check"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        640,
+        848
+      ],
+      "id": "3242436b-378a-42b9-a2da-bcb28170e9a6",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please evaluate the relevance of this job for Anastasia Prysiazhna (Full Stack + DevOps + AI Automation experience).\n\nExtract the most important information using these fallbacks:\n\nTitle: {{ $json.title || $json.jobTitle || $json.jobtitle || \"No title\" }}\n\nCompany: {{ $json.hiringOrganization?.name || $json.company || $json.companyName || $json.company?.name || \"No company\" }}\n\nLocation: {{ $json.jobLocation?.address?.addressLocality || $json.location || $json.city || $json.jobLocation || \"No location\" }}\n\nDescription: {{ \n  Array.isArray($json.jobDescription) ? $json.jobDescription.join(\"\\n\") : \n  ($json.jobDescription || $json.description || $json.text || \"No description\")\n}}\n\nFull raw data (for extra context):\n{{ JSON.stringify($json) }}\n\nReturn ONLY this JSON:\n{\n  \"score\": 85\n}",
+        "options": {
+          "systemMessage": "You are a fast job relevance scorer for Anastasia Prysiazhna.\n\nShe is a Full Stack Developer with strong DevOps/AWS/Docker/CI-CD experience, Python, and currently building her own AI-powered job automation system using n8n + Apify.\n\nEvaluate how relevant this job is for an Entry-level / Junior AI Automation Engineer position.\n\nReturn ONLY this exact JSON, nothing else:\n\n{\n  \"score\": 85\n}",
+          "maxIterations": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        688,
+        592
+      ],
+      "id": "e0266879-650d-42ef-9325-78d162a07c70",
+      "name": "Score Evaluator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Job Information:\nJobID: {{ $json.jobId }}\nTitle: {{ $json.title }}\nCompany: {{ $json.company }}\nLocation: {{ $json.location }}\nEmployment Type: {{ $json.employmentType }}\nDescription: {{ $json.description }}",
+        "options": {
+          "systemMessage": "You are an expert career coach helping Anastasia Prysiazhna, a Ukrainian Full Stack Developer based in Norway (Upper-Intermediate English), land an Entry-level / Junior AI Automation Engineer role (remote, European Economic Area).\n\nHer key strengths:\n• 2+ years commercial Full Stack experience (React, React Native, Next.js, Node.js, TypeScript)\n• Strong DevOps & automation background: AWS (EC2, S3, RDS, ECR, Lambda, etc.), Docker, CI/CD\n• Python, SQL, web scraping, REST APIs\n• Currently building a sophisticated AI-powered job application automation system using n8n + Apify + LLMs (this is her strongest proof of real AI automation skills)\n\nJob Information:\n- JobID: {{ $json.jobId || $json.job_id || 'N/A' }}\n- Title: {{ $json.title }}\n- Company: {{ $json.company }}\n- Location: {{ $json.location }}\n- Employment Type: {{ $json.employmentType }}\n- Description: {{ $json.description }}\n\nTask:\nWrite a personalized, natural, professional cover letter in English (B2+ level: confident but friendly, clear, 150-200 words).\n\nRules:\n- Start with proper greeting (Dear Hiring Manager or Dear [Company] Team)\n- Mention the exact JobID and Job Title\n- Highlight relevant Full Stack + DevOps experience and how it transfers to AI Automation\n- Strongly emphasize her current n8n AI job automation project\n- End with a clear call-to-action\n\nReturn **ONLY** clean valid JSON. No markdown, no explanations, no code blocks, no extra text.\n\n{\n  \"job_id\": \"exact job id from above\",\n  \"cover_letter\": \"full cover letter text here\",\n  \"reason\": \"short 2-3 sentence explanation why this candidate is a good fit\",\n  \"suggested_keywords\": [\"keyword1\", \"keyword2\", \"keyword3\"]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1408,
+        560
+      ],
+      "id": "8bce995c-28d7-4bad-a702-24464121e856",
+      "name": "Full Generator"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b40e6027-a08a-4ff6-a97d-4aa7af17029d",
+              "leftValue": "={{ Number( JSON.parse( String($json.output).replace(/```json|json\\n|```/g, '').trim() ).score ) }}",
+              "rightValue": 65,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        960,
+        576
+      ],
+      "id": "27a11bae-50c6-4438-a9a3-3cb204e17e52",
+      "name": "Score relevance",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1264,
+        832
+      ],
+      "id": "75098dff-bd12-4c09-98fe-c11c0e54b8b2",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        848
+      ],
+      "id": "13bd74cc-5ef0-4ac7-af28-48ff51fd5f51",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0412435c-f113-4f69-8f58-1c631c2642a0",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        160
+      ],
+      "id": "06fad557-014b-4825-afab-4e7f065e0afa",
+      "name": "Status SUCCEDED"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const description = $json.jobDescription || $json.description || \"\";\nconst text = Array.isArray(description) ? description.join(\" \") : String(description);\n\nconst isEnglish = /[a-zA-Z]{5,}/.test(text) && \n                  !/[а-яёàáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ]/i.test(text);\n\nif (isEnglish && $json.employmentType !== \"TEMPORARY\") {\n  return {...$json, source: \"apify\"};\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -64
+      ],
+      "id": "71781b59-83ea-4241-8599-2b0ad5895f0f",
+      "name": "Filter (only English and notTemporaryContract)"
+    },
+    {
+      "parameters": {
+        "operation": "getOutput",
+        "agentId": "6824372766949849",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        976,
+        160
+      ],
+      "id": "379ede98-deff-48a5-9cdb-6b88d9f23403",
+      "name": "Get the output of an agent",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "YJBS06HXHcEC7BYc",
+          "name": "Phantombuster account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "BHzefUZlZRKWxkTck",
+          "mode": "list",
+          "cachedResultName": "🔥 LinkedIn Jobs Scraper (bebity/linkedin-jobs-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/BHzefUZlZRKWxkTck/input"
+        },
+        "customBody": "{\n  \"searchUrl\": \"https://www.linkedin.com/jobs/search?keywords=AI%20Automation%20Engineer%20OR%20AI%20Automation%20OR%20n8n%20OR%20Zapier%20OR%20%22Make.com%22%20OR%20%22AI%20Workflow%22&location=European%20Economic%20Area&f_WT=2&f_E=2&f_TPR=r604800\",\n  \"keywords\": \"entry-level AI Automation Engineer remote\",\n  \"location\": \"European Economic Area\",\n  \"remote\": true,\n  \"experienceLevel\": \"2\",\n  \"maxRows\": 10,\n  \"maxItems\": 10\n}",
+        "timeout": {},
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        160
+      ],
+      "id": "62760d1b-34a8-4e41-86e6-3221969f636e",
+      "name": "Run an Actor",
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "a3GDaRMoztXHGHTC",
+          "name": "Apify OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=⚠️ Apify Run ABORTED  \nStatus: {{ $json.status }} \nMessage: {{ $json.statusMessage }} \nTotal cost: ${{ $json.usageTotalUsd }}  \nConsole: {{ $json.consoleUrl }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        496,
+        160
+      ],
+      "id": "cf2ec021-b42a-4f89-b704-b17c23ae3d41",
+      "name": "Status message",
+      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "1p5uyqJ63wUIKmQG",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=❌ Apify Run Error  \n\nMessage: {{ $json.error }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        288
+      ],
+      "id": "ac8951c3-24bb-467a-b661-61e70692bca2",
+      "name": "Error message",
+      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "1p5uyqJ63wUIKmQG",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const html = $json.data || $json.html || $json.body || \"\";\n\n\nlet company = \"\";\n\nconst companyRegexes = [\n  /<a[^>]*class=\"[^\"]*topcard__org-name-link[^\"]*\"[^>]*>([^<]+)<\\/a>/i,\n  /<a[^>]*class=\"[^\"]*sub-nav-cta__optional-url[^\"]*\"[^>]*>([^<]+)<\\/a>/i,\n  /<h4[^>]*class=\"[^\"]*top-card-layout__second-subline[^\"]*\"[^>]*>.*?<a[^>]*>([^<]+)<\\/a>/i,\n  /\"companyName\"\\s*:\\s*\"([^\"]+)\"/i,\n  /company\":\\s*\"([^\"]+)\"/i\n];\n\nfor (const regex of companyRegexes) {\n  const match = html.match(regex);\n  if (match && match[1]) {\n    company = match[1].trim();\n    break;\n  }\n}\n\nlet description = \"\";\n\nconst descriptionRegexes = [\n  /<div class=\"show-more-less__list[^>]*>([\\s\\S]*?)<\\/div>/i,\n  /<span class=\"description__content[^>]*>([\\s\\S]*?)<\\/span>/i,\n  /<div class=\"description__text[^>]*>([\\s\\S]*?)<\\/div>/i,\n  /<div class=\"mt4[^>]*>([\\s\\S]*?)(?=<\\/div>)/i\n];\n\nfor (const regex of descriptionRegexes) {\n  const match = html.match(regex);\n  if (match && match[1]) {\n    description = match[1];\n    break;\n  }\n}\n\ndescription = description\n  .replace(/<[^>]+>/g, \" \")\n  .replace(/\\s+/g, \" \")\n  .trim();\n\nreturn {\n  companyName: company || $json.company || $json.companyName || \"No company name\",\n  description: description || $json.description || \"-\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        816
+      ],
+      "id": "924f8f15-87b6-4693-9129-8d4020ad4b27",
+      "name": "Extract Job Description"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.jobUrl }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 20,
+              "batchInterval": 20000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -352,
+        816
+      ],
+      "id": "2ad9e035-3925-40c2-bc78-c7d05a34700c",
+      "name": "Get full job"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8b807c46-6197-448b-b5ef-723d6b6c41ed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "abort",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        176
+      ],
+      "id": "76775fa8-84ec-43bb-bc4a-1c066d3fbb3a",
+      "name": "Error or status"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1184,
+        -48
+      ],
+      "id": "ba939f7b-edb0-433c-98a6-9b585bb96ced",
+      "name": "Go to loop"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b1362d7f-3266-47f1-9211-d70156b72f73",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "apify",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -192,
+        416
+      ],
+      "id": "90bc2577-55e4-438a-9867-c37858969d7e",
+      "name": "Check source"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const isEnglish = /[a-zA-Z]{5,}/.test($json.description) && \n                  !/[а-яёàáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ]/i.test($json.description);\n\nif (isEnglish) {\n  return $json;\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        816
+      ],
+      "id": "f02d3ac9-4b15-4cbf-a031-9d5f7b63a4c1",
+      "name": "Filter (only English)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d428d395-c214-4dd1-b987-5559f889d732",
+              "leftValue": "={{Object.keys($node[\"Filter (only English)\"].json).length}}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        144,
+        816
+      ],
+      "id": "62bc7a91-eb2d-4d23-bb98-14ba35e75288",
+      "name": "If English"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        352,
+        832
+      ],
+      "id": "3225361d-59b8-42fb-a07b-b62e1377c682",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {
+        "model": "gemma2:2b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        688,
+        736
+      ],
+      "id": "31b6e3f6-a82f-45b1-a3e1-5a6481a2beb4",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "EFCsegmTpwxU7Wt6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gemma2:2b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        704
+      ],
+      "id": "d8b2b9bc-31bb-4205-8df5-8026b33357b8",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "EFCsegmTpwxU7Wt6",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7cc791bd-3fc7-4785-851e-2c592d00ee3c",
+              "name": "title",
+              "value": "={{ $json.title || $json.jobTitle || $json.jobtitle || $('Extract Job ID').item.json.jobTitle || 'No title' }}",
+              "type": "string"
+            },
+            {
+              "id": "28d77d41-2f93-482d-95c0-44e53470300c",
+              "name": "company",
+              "value": "={{ $json.company || $json.companyName || $json.hiringOrganization?.name || $('Extract Job ID').item.json.companyName || 'No company' }}",
+              "type": "string"
+            },
+            {
+              "id": "409dd068-95c2-4fe3-a99d-703f8ab412c9",
+              "name": "location",
+              "value": "={{ $json.location || $json.jobLocation?.address?.addressLocality || $json.city || $('Extract Job ID').item.json.location || 'No location' }}",
+              "type": "string"
+            },
+            {
+              "id": "2f29e323-ca47-4e73-9ccc-e6716e4c3441",
+              "name": "description",
+              "value": "={{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || $('Extract Job ID').item.json.description || $json.jobDescription || 'No description') }}",
+              "type": "string"
+            },
+            {
+              "id": "bf644f38-bd07-4e8e-9aa1-89e4660abd04",
+              "name": "employmentType",
+              "value": "={{ $json.employmentType || $json.workplaceType || '-' }}",
+              "type": "string"
+            },
+            {
+              "id": "e042e9bd-cd6e-4019-98fe-b390689c12b5",
+              "name": "jobId",
+              "value": "={{ $json.id || $json.jobId || $('Extract Job ID').item.json.jobId || 'No iD' }}",
+              "type": "string"
+            },
+            {
+              "id": "60e5391f-479f-4bf0-ac74-477355b09c56",
+              "name": "date",
+              "value": "={{ $json.datePosted ? new Date($json.datePosted).toISOString().split('T')[0] : ($('Extract Job ID').item.json.postedAt ? new Date($('Extract Job ID').item.json.postedAt).toISOString().split('T')[0] : '-') }}",
+              "type": "string"
+            },
+            {
+              "id": "1bfc8ede-c07f-4247-8300-fd98f44ffe5b",
+              "name": "salary",
+              "value": "={{      (() => {       const s = $json.baseSalary || $json.salary || {};       if (!s || !s.value) return '-';       let result = '';       if (s.value.minValue != null) result += s.value.minValue;       if (s.value.maxValue != null) result += ` - ${s.value.maxValue}`;       if (s.currency) result += ` ${s.currency}`;       if (s.value.unitText) result += ` (per ${s.value.unitText})`;       return result.trim() || '-';     })()   }}",
+              "type": "string"
+            },
+            {
+              "id": "dca7a46f-eb25-4e32-b8df-8d0035cf2360",
+              "name": "link",
+              "value": "={{ $('Extract Job ID').item.json.jobUrl || $json.url || $json.jobUrl || $json.linkedinUrl || $json.hiringOrganization?.sameAs || '-' }}",
+              "type": "string"
+            },
+            {
+              "id": "b5a74774-b857-42a7-ab7c-79514eb1ae90",
+              "name": "score",
+              "value": "={{ JSON.parse(String($json.output).replace(/```json|```|json\\n/g, '').trim()).score || '-' }}",
+              "type": "string"
+            },
+            {
+              "id": "06dbec74-67cd-4957-b4cc-1ef68bb5c6c5",
+              "name": "employmentType",
+              "value": "={{$json.employmentType || $json.workplaceType || '-'}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1184,
+        560
+      ],
+      "id": "abcee63d-a6aa-43b7-a9b2-e8603d0567d9",
+      "name": "Prepare for Full Generator"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const rawOutput = $json.output || \"\";\n\n// Aggressive cleaning\nlet cleaned = rawOutput\n  .replace(/```json|```|json\\n/g, '')           // remove markdown\n  .replace(/\\n/g, ' ')                          // remove newlines\n  .replace(/\\s+/g, ' ')                         // normalize spaces\n  .trim();\n\n// Fix common JSON issues\ncleaned = cleaned.replace(/,\\s*}/g, '}');       // remove trailing commas\ncleaned = cleaned.replace(/\"\\s*,\\s*\"/g, '\",\"'); // fix broken strings\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  // Second attempt - try to extract JSON with regex\n  const jsonMatch = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    try {\n      parsed = JSON.parse(jsonMatch[0]);\n    } catch (e2) {\n      parsed = null;\n    }\n  }\n}\n\nif (!parsed) {\n  parsed = {\n    cover_letter: \"Failed to parse cover letter\",\n    reason: \"JSON parse error\",\n    suggested_keywords: []\n  };\n}\n\nreturn {\n  jobId: parsed.job_id || parsed.jobId || \"-\",\n  coverLetter: parsed.cover_letter || parsed.coverLetter || \"-\",\n  reason: parsed.reason || \"-\",\n  keywords: Array.isArray(parsed.suggested_keywords) \n    ? parsed.suggested_keywords.join(\", \") \n    : (parsed.suggestedKeywords || parsed.keywords || \"-\")\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        432
+      ],
+      "id": "0df7febc-ffef-4bc7-810e-e4251e612869",
+      "name": "Format output"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "jobId",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1744,
+        272
+      ],
+      "id": "9520ef63-ea9a-4439-abff-5c5d8d33cc06",
+      "name": "Combine output"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const isRemote = $json.isRemote && $('Get the output of an agent').item.json.workplaceType|| \"\";\n\nif (isRemote) {\n  return {...$json, source: 'phantombuster'};\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        160
+      ],
+      "id": "ff2573c0-c246-4e8c-a59f-6645ad7955ff",
+      "name": "Filter (only remote)"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "companyName",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        128,
+        448
+      ],
+      "id": "6a51080a-6a9b-454b-b777-82374d5ea06e",
+      "name": "Combine fields"
+    },
+    {
+      "parameters": {
+        "sendTo": "palitsanastasia3.ap@gmail.com",
+        "subject": "=⚠️ Apify Run ABORTED   ",
+        "message": "=Status: {{ $json.status }}  Message: {{ $json.statusMessage }}  Total cost: ${{ $json.usageTotalUsd }}   Console: {{ $json.consoleUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        736,
+        160
+      ],
+      "id": "0881f324-62c2-47af-944b-4bfddbef86e0",
+      "name": "Send status message",
+      "webhookId": "0e30695f-24dd-42de-9f39-4d50e23f88eb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oCYy1TNZZoZ7RmSi",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "palitsanastasia3.ap@gmail.com",
+        "subject": "=❌ Apify Run Error",
+        "message": "=Message: {{ $json.error }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        288
+      ],
+      "id": "8067970f-ed17-47ff-b10a-1ab17e34f025",
+      "name": "Send error message",
+      "webhookId": "b3e168c6-4c37-439b-b2b1-9e99c1b58b0c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "oCYy1TNZZoZ7RmSi",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "Filter (only English and notTemporaryContract)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vacancy": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Check source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Job ID": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Deduplication Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplication Check": {
+      "main": [
+        [
+          {
+            "node": "Score Evaluator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Evaluator": {
+      "main": [
+        [
+          {
+            "node": "Score relevance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Full Generator": {
+      "main": [
+        [
+          {
+            "node": "Format output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score relevance": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Full Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Vacancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Status SUCCEDED": {
+      "main": [
+        [
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error or status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only English and notTemporaryContract)": {
+      "main": [
+        [
+          {
+            "node": "Go to loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Status SUCCEDED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get the output of an agent": {
+      "main": [
+        [
+          {
+            "node": "Filter (only remote)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status message": {
+      "main": [
+        [
+          {
+            "node": "Get the output of an agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error message": {
+      "main": [
+        [
+          {
+            "node": "Get the output of an agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Job Description": {
+      "main": [
+        [
+          {
+            "node": "Filter (only English)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get full job": {
+      "main": [
+        [
+          {
+            "node": "Extract Job Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error or status": {
+      "main": [
+        [
+          {
+            "node": "Status message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send status message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Go to loop": {
+      "main": [
+        [
+          {
+            "node": "Vacancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check source": {
+      "main": [
+        [
+          {
+            "node": "Extract Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get full job",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only English)": {
+      "main": [
+        [
+          {
+            "node": "If English",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If English": {
+      "main": [
+        [
+          {
+            "node": "Combine fields",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing2": {
+      "main": [
+        [
+          {
+            "node": "Vacancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Score Evaluator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Full Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Full Generator": {
+      "main": [
+        [
+          {
+            "node": "Full Generator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine output",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Format output": {
+      "main": [
+        [
+          {
+            "node": "Combine output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine output": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only remote)": {
+      "main": [
+        [
+          {
+            "node": "Go to loop",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine fields": {
+      "main": [
+        [
+          {
+            "node": "Extract Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send status message": {
+      "main": [
+        [
+          {
+            "node": "Get the output of an agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send error message": {
+      "main": [
+        [
+          {
+            "node": "Get the output of an agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9d15df55-d656-4ec1-b9fb-51cd869631c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00c5e25703d6a058b5ec5aad42f4cca154e95aade5553ca975b703b6677e90a0"
+  },
+  "id": "5HoX2WiZ3Zcu6jry",
+  "tags": []
+}
