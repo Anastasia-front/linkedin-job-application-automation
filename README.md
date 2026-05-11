@@ -62,3 +62,5 @@ This project showcases:
 ![telegram-notification](screenshots/telegram-notification.png)
 ![gmail-notification-warning](screenshots/gmail-notification-warning.png)
 ![gmail-notification-error](screenshots/gmail-notification-error.png)
+![phatombusters-dashboard](screenshots/phatombusters-dashboard.png)
+![apify-dashboard](screenshots/apify-dashboard.png)
