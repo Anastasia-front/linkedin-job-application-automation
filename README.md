@@ -105,7 +105,7 @@ restart: unless-stopped
 
     volumes:
       - /home/ec2-user/n8n-data:/home/node/.n8n
-      - /home/ec2-user/n8n-files:/files
+      - /home/ec2-user/n8n-files://home/node/.n8n-files
 ```
 
 Replace:
