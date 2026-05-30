@@ -1,0 +1,180 @@
+{
+  "name": "subworkflow-failed-messages",
+  "nodes": [
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: subworkflow-failed-messages\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \nNode Name: {{ $execution.error?.node?.name || 'Check Node' }}\nMessage: {{ $json.message ? $json.message.substring(0, 200) : 'Check the full workflow' }}\n\n🔗 View Execution Details:\n{{ $execution.resumeUrl }}, {{ $execution.resumeFormUrl }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        128
+      ],
+      "id": "7b6c564d-bd79-4515-a47a-30ec601cd89c",
+      "name": "Send a text message",
+      "webhookId": "ece1ee05-2a74-4ce6-9d4b-79d8db9ddad5",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B72N13J85",
+          "mode": "list",
+          "cachedResultName": "errors"
+        },
+        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: subworkflow-failed-messages\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \nNode Name: {{ $execution.error?.node?.name || 'Check Node' }}\nMessage: {{ $json.message ? $json.message.substring(0, 200) : 'Check the full workflow' }}\n\n🔗 View Execution Details:\n{{ $execution.resumeUrl }}, {{ $execution.resumeFormUrl }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        384,
+        -112
+      ],
+      "id": "f397f83d-08c6-4160-9ccd-d54d6afc7ae3",
+      "name": "Send a message",
+      "webhookId": "94185763-bc84-4d6f-a3d8-5d3cc860d285",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "reaction",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B72N13J85",
+          "mode": "list",
+          "cachedResultName": "errors"
+        },
+        "timestamp": "={{ $json.message_timestamp }}",
+        "name": "-1"
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        608,
+        -112
+      ],
+      "id": "3d3374f8-5d73-4665-ba44-34330affdf8a",
+      "name": "Add a reaction",
+      "webhookId": "c1f10a1c-3a2f-4e82-ae8c-735231ea9f24",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendSticker",
+        "chatId": "491664927",
+        "file": "CAACAgIAAxkBAAPfahrIoIKQr1B0e1aQAAFSk--FpdF1AAKjEAAC8XeoSH47GBLDl9VBOwQ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        128
+      ],
+      "id": "2d09a24f-96fb-4fab-8b7b-7ee0008c02be",
+      "name": "Send a sticker",
+      "webhookId": "104d2311-ce1f-483f-a507-5ad9e3cff1c2",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "62a1b66e-d679-41e2-ab35-2fa7a86129f8",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Add a reaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add a reaction": {
+      "main": [
+        []
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send a sticker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "95ca9a73-97cd-4727-980f-11d5a60367b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
+  },
+  "id": "OBN6W1xv8afk8Hkn",
+  "tags": []
+}

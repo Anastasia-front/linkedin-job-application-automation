@@ -1,0 +1,583 @@
+{
+  "name": "subworkflow-fetch-jobs-or-get-from-disk",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "TEST_MODE"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        -432
+      ],
+      "id": "d3bd8da2-d211-49e0-864b-19d819363978",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $('Run an Actor').item.json.defaultDatasetId }}",
+        "offset": {},
+        "options": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        -144
+      ],
+      "id": "a3f704dd-fffc-47e6-94e6-47177e793e6d",
+      "name": "Get dataset items",
+      "credentials": {
+        "apifyApi": {
+          "id": "AO5NItl9mxLm8h9K",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0412435c-f113-4f69-8f58-1c631c2642a0",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1216,
+        -224
+      ],
+      "id": "225a07bf-2e78-471f-bd7e-2d7d91b51d3a",
+      "name": "Status SUCCEDED"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const description = $json.jobDescription || $json.description || \"\";\nconst text = Array.isArray(description) ? description.join(\" \") : String(description);\n\nconst isEnglish = /[a-zA-Z]{5,}/.test(text) && \n                  !/[а-яёàáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ]/i.test(text);\n\nif (isEnglish && $json.employmentType !== \"TEMPORARY\") {\n  return {...$json, source: \"apify\"};\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        -208
+      ],
+      "id": "c4b79686-3b75-4cbd-a4ce-0a4f1a0bf5b0",
+      "name": "Filter (only English and notTemporaryContract)"
+    },
+    {
+      "parameters": {
+        "operation": "getOutput",
+        "agentId": "6824372766949849",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        0
+      ],
+      "id": "297514ce-e8de-4e8c-8b36-c457082c93ac",
+      "name": "Get the output of an agent",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "mBNMJhCBqt6LAe8H",
+          "name": "Phantombuster account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "actorSource": "store",
+        "actorId": {
+          "__rl": true,
+          "value": "JkfTWxtpgfvcRQn3p",
+          "mode": "list",
+          "cachedResultName": "⚡️Rapid Linkedin Jobs Scraper (worldunboxer/rapid-linkedin-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/JkfTWxtpgfvcRQn3p/input"
+        },
+        "customBody": "{\n  \"job_title\":\"AI Automation Engineer\",\n  \"location\": \"European Economic Area\",\n  \"experience_level\":\"junior\",\n  \"work_schedule\":\"remote\",\n  \"jobs_entries\":\"100\"\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -224
+      ],
+      "id": "0f4cb563-6916-423f-8ba5-1ece8c4693cb",
+      "name": "Run an Actor",
+      "credentials": {
+        "apifyApi": {
+          "id": "AO5NItl9mxLm8h9K",
+          "name": "Apify account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2080,
+        -352
+      ],
+      "id": "a17d1ed6-25b4-4c5d-95ae-0daf48a59826",
+      "name": "Go to loop",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const isRemote = $json.isRemote && $('Get the output of an agent').item.json.workplaceType|| \"\";\n\nif (isRemote) {\n  return {...$json, source: 'phantombuster'};\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        -32
+      ],
+      "id": "e1255530-ba40-4eda-a6a4-7a6f9cc8a684",
+      "name": "Filter (only remote)"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "apify-test.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        -352
+      ],
+      "id": "83ec3ae1-e516-4946-abaf-6cba312bd931",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/.n8n-files/scraper_jobs/latest.json",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1552,
+        -352
+      ],
+      "id": "f41bdf1d-a66a-4d82-b752-e8c0680deab1",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/scraper_jobs/dataset.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        -560
+      ],
+      "id": "6a0e11d5-aef0-478c-86af-2ab2dd4137f1",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1296,
+        -560
+      ],
+      "id": "6b687f85-46b6-496e-aec0-d1a6bde954a2",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        -560
+      ],
+      "id": "0faa9169-decc-4230-91c2-503dcf15a5eb",
+      "name": "Split Out",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "745ce7a3-6903-4eb2-a43e-68db66050162",
+              "leftValue": "={{ $json.TEST_MODE}}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        864,
+        -432
+      ],
+      "id": "2a060f0b-913c-4991-b81f-4e4aad2067e6",
+      "name": "If TEST_MODE"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "gLbwb5LpEIgzeUa2",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gLbwb5LpEIgzeUa2",
+          "cachedResultName": "subworkflow-alerts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [
+            "status"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "58a08feb-0f5f-486b-8b93-60d31af8e12e",
+      "name": "Call 'subworkflow-alerts'"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const description = $json.job_description || $json.description || \"\";\nconst text = Array.isArray(description) ? description.join(\" \") : String(description);\n\nconst isEnglish = /[a-zA-Z]{5,}/.test(text) && \n                  !/[а-яёàáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ]/i.test(text);\n\nif (isEnglish && $json.employment_type !== \"Part-time\") {\n  return {...$json, source: \"apify\"};\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -560
+      ],
+      "id": "4138977f-3b6d-4787-95f6-25c82c61f431",
+      "name": "Filter (only English and notPartTime)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9ce120b3-4450-4ee9-adb2-6b30e5d9c053",
+              "name": "data",
+              "value": "={{ $json.jobs }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2480,
+        -352
+      ],
+      "id": "d55d14c9-b666-4811-af37-e1704b541440",
+      "name": "Return array"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      jobs: $input.all().map(item => item.json)\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        -352
+      ],
+      "id": "a076e525-6a81-4b82-9e50-2d98a09b2f49",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "Filter (only English and notTemporaryContract)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status SUCCEDED": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'subworkflow-alerts'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only English and notTemporaryContract)": {
+      "main": [
+        [
+          {
+            "node": "Go to loop",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Status SUCCEDED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get the output of an agent": {
+      "main": [
+        [
+          {
+            "node": "Filter (only remote)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Go to loop": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only remote)": {
+      "main": [
+        [
+          {
+            "node": "Go to loop",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        []
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Filter (only English and notPartTime)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "If TEST_MODE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If TEST_MODE": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'subworkflow-alerts'": {
+      "main": [
+        [
+          {
+            "node": "Get the output of an agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter (only English and notPartTime)": {
+      "main": [
+        [
+          {
+            "node": "Go to loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return array": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Return array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "bdSF6e1MzCqymRmS",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "f38e1606-aa90-4653-9960-cbf953f6ff88",
+  "meta": {
+    "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
+  },
+  "id": "MK3OlmgDHyttdWvL",
+  "tags": []
+}

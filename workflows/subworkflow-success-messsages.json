@@ -1,0 +1,236 @@
+{
+  "name": "subworkflow-success-messsages",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "total_added_today",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "18a5a868-45dc-4a01-82a0-0f7b2000d08e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "sendAnimation",
+        "chatId": "491664927",
+        "file": "CgACAgQAAxkBAAPoahrOaausUszdA9VjNzrS5KsOHZoAAiAHAAPyVFMNvMiSPtb1JTsE",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        -112
+      ],
+      "id": "8af0d35a-11e8-48c1-b33b-15d98b4609ce",
+      "name": "Send an animated file",
+      "webhookId": "72868a1b-37cc-4509-8be2-13d20eaba129",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=The workflow is completed. The {{$json.total_added_today}} new vacancies have been added to the spreadsheet. Check it out !)",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        -112
+      ],
+      "id": "c1f9c50f-0284-42f8-b796-6d812b1ce4e9",
+      "name": "Send a text message",
+      "webhookId": "5d57933c-794a-4ebc-8f71-702c58f01cea",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B77EXHVC1",
+          "mode": "list",
+          "cachedResultName": "success-messages"
+        },
+        "text": "=The workflow is completed. The {{$json.total_added_today}} new vacancies have been added to the spreadsheet. Check it out !)",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        160,
+        80
+      ],
+      "id": "17ba1b74-6ff7-4e3e-b67e-ab6d32ee9cd5",
+      "name": "Send a message",
+      "webhookId": "7c28a0f1-cf9b-4b09-927e-362b1619a51a",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "reaction",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B77EXHVC1",
+          "mode": "list",
+          "cachedResultName": "success-messages"
+        },
+        "timestamp": "={{ $json.message_timestamp }}",
+        "name": "+1"
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        384,
+        80
+      ],
+      "id": "049f308f-091d-44b0-84b0-80622ebf03aa",
+      "name": "Add a reaction",
+      "webhookId": "84815350-6c77-4801-b7b8-eba44602de66",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4778a548-a229-4a7f-9b4f-c4372a764793",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "ffc5650c-a855-49fd-aa10-7ea6ab9667b0",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Send an animated file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an animated file": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Add a reaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add a reaction": {
+      "main": [
+        []
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "816e86ca-688e-4e52-aad2-571db281ee2d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
+  },
+  "id": "JSB4ldxh5lpeKNZI",
+  "tags": []
+}

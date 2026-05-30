@@ -1,48 +1,6 @@
 {
-  "name": "LinkedIn Job Application Automation",
+  "name": "subworkflow-evaluate-and-save-job",
   "nodes": [
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 30
-            }
-          ]
-        }
-      },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        -880,
-        224
-      ],
-      "id": "3b2856a3-3f34-4c3f-ac99-b342526eac02",
-      "name": "Schedule Trigger"
-    },
-    {
-      "parameters": {
-        "resource": "Datasets",
-        "datasetId": "={{ $('Run an Actor').item.json.defaultDatasetId }}",
-        "offset": {},
-        "options": {}
-      },
-      "type": "@apify/n8n-nodes-apify.apify",
-      "typeVersion": 1,
-      "position": [
-        384,
-        -16
-      ],
-      "id": "e623f129-9401-4ce4-a26c-f63ef7cc040b",
-      "name": "Get dataset items",
-      "credentials": {
-        "apifyApi": {
-          "id": "AO5NItl9mxLm8h9K",
-          "name": "Apify account"
-        }
-      }
-    },
     {
       "parameters": {
         "operation": "append",
@@ -67,14 +25,14 @@
             "Company": "={{ $json.Company }}",
             "Location": "={{ $json.Location }}",
             "Description": "={{ $json.Description }}",
-            "Salary": "={{ $json.Salary }}",
             "Date": "={{ $json.Date }}",
             "Score": "={{ $json.Score }}",
             "Cover Letter": "={{ $json['Cover Letter'] }}",
             "Reason": "={{ $json.Reason }}",
             "Keywords": "={{ $json.Keywords }}",
             "Link": "={{ $json.Link }}",
-            "Unique ID": "={{ $json['Job ID'] }}"
+            "Unique ID": "={{ $json['Job ID'] }}",
+            "Row Added": "={{ $json['Created At'] }}"
           },
           "matchingColumns": [],
           "schema": [
@@ -189,8 +147,8 @@
               "removed": false
             },
             {
-              "id": "Salary",
-              "displayName": "Salary",
+              "id": "Row Added",
+              "displayName": "Row Added",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -209,10 +167,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1424,
-        864
+        816,
+        848
       ],
-      "id": "a50f5078-76dd-4363-952e-ecbc18a8df1a",
+      "id": "44266864-5ff5-4a00-8e80-16adfa042cab",
       "name": "Append row in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -224,47 +182,32 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"Job ID\": {{$json.jobId || ''}},\n  \"Title\": \"{{ $json.title || $json.jobTitle || 'No title' }}\",\n  \"Company\": \"{{ $json.hiringOrganization?.name || $json.company || $json.companyName || 'No company' }}\",\n  \"Location\": \"{{ $json.jobLocation?.address?.addressLocality || $json.location || $json.city || $json.jobLocation || 'No location' }}\",\n  \"Date\": \"{{ $json.date }}\",\n  \"Description\": \"{{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || '-') }}\",\n  \"Employment Type\": \"{{ $json.employmentType }}\",\n  \"Salary\": \"{{  $json.salary }}\",\n  \"Link\": \"{{ $json.link }}\",\n  \"Score\": \"{{ $json.score }}\",\n  \"Cover Letter\": \"{{ $json.coverLetter }}\",\n  \"Reason\": \"{{ $json.reason }}\",\n  \"Keywords\": \"{{ $json.keywords }}\"}",
+        "jsonOutput": "={\n  \"Job ID\": {{$json.jobId || ''}},\n  \"Title\": \"{{ $json.title || $json.jobTitle || 'No title' }}\",\n  \"Company\": \"{{ $json.hiringOrganization?.name || $json.company || $json.companyName || 'No company' }}\",\n  \"Location\": \"{{ $json.jobLocation?.address?.addressLocality || $json.location || $json.city || $json.jobLocation || 'No location' }}\",\n  \"Date\": \"{{ $json.date }}\",\n  \"Description\": \"{{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || '-') }}\",\n  \"Employment Type\": \"{{ $json.employmentType }}\",\n  \"Salary\": \"{{  $json.salary }}\",\n  \"Link\": \"{{ $json.link }}\",\n  \"Score\": \"{{ $json.score }}\",\n  \"Cover Letter\": \"{{ $json.coverLetter }}\",\n  \"Reason\": \"{{ $json.reason }}\",\n  \"Keywords\": \"{{ $json.keywords }}\",\n  \"Created At\":\"{{ $now.format('yyyy-MM-dd') }}\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1552,
-        480
+        992,
+        656
       ],
-      "id": "8227ee72-572d-4017-8a51-1a885a22b4e8",
+      "id": "cd38ba66-93af-43d9-af3a-9f02aa9e7cc4",
       "name": "Edit Fields"
     },
     {
       "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        -896,
-        464
-      ],
-      "id": "95411622-4675-43a6-a33f-39b7cbabe8a8",
-      "name": "Vacancy",
-      "retryOnFail": false,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"jobId\": \"{{$json.id||$('Get the output of an agent').item.json.jobId || $json.identifier?.value || $json.url || $json.jobUrl || $json.linkedinUrl || $json['@id'] }}\"\n}",
+        "jsonOutput": "={\n  \"jobId\": \"{{$json.id || $json.jobId || $json.job_id || $json.identifier?.value || $('Loop Over Items').item.json.jobId}}\"\n}",
         "includeOtherFields": true,
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -16,
-        464
+        128,
+        544
       ],
-      "id": "fe9bde37-5aab-424c-89db-a74f3150467d",
+      "id": "76b63b88-c7a8-4736-80f8-18e4903abe6d",
       "name": "Extract Job ID"
     },
     {
@@ -287,19 +230,20 @@
           "values": [
             {
               "lookupColumn": "Unique ID",
-              "lookupValue": "={{ $json.id }}"
+              "lookupValue": "={{ $json.id || $json.job_id || $json.jobId }}"
             }
           ]
         },
+        "combineFilters": "OR",
         "options": {}
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        -16,
-        672
+        -304,
+        368
       ],
-      "id": "c6b9827b-0df3-489a-96e0-10641a243df9",
+      "id": "7e0b8a95-66ae-4aaa-b36b-cf05bb47ad79",
       "name": "Get row(s) in sheet",
       "alwaysOutputData": true,
       "credentials": {
@@ -338,10 +282,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        208,
-        672
+        -80,
+        368
       ],
-      "id": "0c9a14a0-f417-40a1-af50-f92a1b4ea9de",
+      "id": "ec6472aa-a53e-4d59-9c4f-2f378971f798",
       "name": "Deduplication Check"
     },
     {
@@ -349,10 +293,10 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        336,
-        912
+        128,
+        384
       ],
-      "id": "c15f4e09-6013-44be-94b0-a08a5e6f02fb",
+      "id": "79ef2508-7a4c-4686-8218-7e781636b808",
       "name": "No Operation, do nothing1"
     },
     {
@@ -367,10 +311,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        384,
-        656
+        128,
+        112
       ],
-      "id": "ee674a04-d532-4b8f-bd89-2c4df5988173",
+      "id": "50ed07bc-7df3-4f9c-89c7-941527302254",
       "name": "Score Evaluator"
     },
     {
@@ -384,10 +328,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1104,
-        624
+        864,
+        96
       ],
-      "id": "bfff163c-776c-4378-9ca5-75cbfdb29713",
+      "id": "5298a96f-a361-48ac-9275-103e5f1fecd1",
       "name": "Full Generator"
     },
     {
@@ -417,175 +361,24 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        656,
-        640
+        432,
+        112
       ],
-      "id": "d3c52923-270f-4fa4-b82b-98cb1e0d895d",
+      "id": "b71d5aa8-a105-46f6-9567-42e2cb9477d1",
       "name": "Score relevance",
       "retryOnFail": false,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        960,
-        896
-      ],
-      "id": "00101415-c1ea-4ab2-9f30-3510b6c7a70e",
-      "name": "Merge"
-    },
-    {
-      "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        736,
-        912
+        544,
+        384
       ],
-      "id": "a8f07ff2-f5b6-4065-93cd-5de13bfb0ff1",
+      "id": "2fd023d5-03b3-4620-8f9f-6619c5d04837",
       "name": "No Operation, do nothing"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "0412435c-f113-4f69-8f58-1c631c2642a0",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": "SUCCEEDED",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        96,
-        224
-      ],
-      "id": "245a9003-c23c-4028-80f4-537318b3637c",
-      "name": "Status SUCCEDED"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const description = $json.jobDescription || $json.description || \"\";\nconst text = Array.isArray(description) ? description.join(\" \") : String(description);\n\nconst isEnglish = /[a-zA-Z]{5,}/.test(text) && \n                  !/[а-яёàáâãäåæçèéêëìíîïðñòóôõöøùúûüýÿ]/i.test(text);\n\nif (isEnglish && $json.employmentType !== \"TEMPORARY\") {\n  return {...$json, source: \"apify\"};\n}"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        816,
-        -16
-      ],
-      "id": "fa13bd07-aeed-4456-8f3f-41fad65858b9",
-      "name": "Filter (only English and notTemporaryContract)"
-    },
-    {
-      "parameters": {
-        "operation": "getOutput",
-        "agentId": "6824372766949849",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.phantombuster",
-      "typeVersion": 1,
-      "position": [
-        960,
-        208
-      ],
-      "id": "226bf8d8-a7f1-482d-981b-2ecc8366b8fe",
-      "name": "Get the output of an agent",
-      "credentials": {
-        "phantombusterApi": {
-          "id": "mBNMJhCBqt6LAe8H",
-          "name": "Phantombuster account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "actorSource": "store",
-        "actorId": {
-          "__rl": true,
-          "value": "0lLu3ht7kPSG6K7qi",
-          "mode": "list",
-          "cachedResultName": "💼 LinkedIn Jobs Scraper 🔓 No Cookie/Login Needed 📄 +Raw HTML (parseforge/linkedin-jobs-scraper)",
-          "cachedResultUrl": "https://console.apify.com/actors/0lLu3ht7kPSG6K7qi/input"
-        },
-        "customBody": "{\n  \"searchQuery\": \"https://www.linkedin.com/jobs/search?keywords=AI%20Automation%20Engineer%20OR%20AI%20Automation%20OR%20n8n%20OR%20Zapier%20OR%20%22Make.com%22%20OR%20%22AI%20Workflow%22&location=European%20Economic%20Area&f_WT=2&f_E=2&f_TPR=r604800\",\n  \"location\": \"European Economic Area\",\n  \"maxItems\": 10,\n  \"datePosted\": \"pastWeek\",\n  \"jobType\": [\"fullTime\",\n\"partTime\",\n\"contract\",\n\"internship\"],\n  \"experienceLevel\": [\"internship\",\n\"entryLevel\",\n\"associate\"],\n  \"workplaceType\": [\"remote\"],\n  \"easyApplyOnly\": false,\n  \"sortBy\": \"relevant\",\n  \"scrapeJobDetails\": true,\n  \"extractSkills\": true,\n  \"proxyConfiguration\": {\n    \"useApifyProxy\": true\n  },\n  \"maxConcurrency\": 10\n}"
-      },
-      "type": "@apify/n8n-nodes-apify.apify",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        224
-      ],
-      "id": "273d2d79-7395-4725-b710-6555b1562e1e",
-      "name": "Run an Actor",
-      "credentials": {
-        "apifyApi": {
-          "id": "AO5NItl9mxLm8h9K",
-          "name": "Apify account"
-        }
-      },
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "chatId": "491664927",
-        "text": "=⚠️ Apify Run ABORTED  \nStatus: {{ $json.status }} \nMessage: {{ $json.statusMessage }} \nTotal cost: ${{ $json.usageTotalUsd }}  \nConsole: {{ $json.consoleUrl }}",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        480,
-        208
-      ],
-      "id": "58788cfd-f6ba-4f75-a6cc-033f66fddcbf",
-      "name": "Status message",
-      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
-      "credentials": {
-        "telegramApi": {
-          "id": "kfCInsROG3jgx84C",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "491664927",
-        "text": "=❌ Apify Run Error  \n\nMessage: {{ $json.error }}",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        512,
-        336
-      ],
-      "id": "23e98178-bcf9-441f-a469-4e0671fc6a40",
-      "name": "Error message",
-      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
-      "credentials": {
-        "telegramApi": {
-          "id": "kfCInsROG3jgx84C",
-          "name": "Telegram account"
-        }
-      }
     },
     {
       "parameters": {
@@ -595,15 +388,15 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -704,
-        880
+        -272,
+        544
       ],
-      "id": "7f5d700c-2966-4fcb-87e9-8d3260421d02",
+      "id": "e04f2022-d09b-4d2a-b852-67b19c7c0f15",
       "name": "Extract Job Description"
     },
     {
       "parameters": {
-        "url": "={{ $json.jobUrl }}",
+        "url": "={{ $json.jobUrl ||  $json.job_url  }}",
         "options": {
           "batching": {
             "batch": {
@@ -616,55 +409,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -864,
-        880
+        -496,
+        560
       ],
-      "id": "c30f06c2-c75d-4d4e-aedc-699d124588e3",
-      "name": "Get full job"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "8b807c46-6197-448b-b5ef-723d6b6c41ed",
-              "leftValue": "={{ $json.status }}",
-              "rightValue": "abort",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        288,
-        224
-      ],
-      "id": "640803de-83d6-46ba-a0d0-7ed8e175cdc9",
-      "name": "Error or status"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        1168,
-        0
-      ],
-      "id": "72574b60-549c-4aab-8f79-973867c305c4",
-      "name": "Go to loop"
+      "id": "59b56bd5-dcaa-4d5a-adf3-31915fa7d43c",
+      "name": "Get full job",
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -693,10 +445,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -704,
-        480
+        -640,
+        384
       ],
-      "id": "fee38807-97a2-40dd-a8d1-9dbad9c6a0fb",
+      "id": "0b1d090b-c715-4ce2-b0f0-3711e26e5368",
       "name": "Check source"
     },
     {
@@ -707,56 +459,12 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -320,
-        880
+        -64,
+        544
       ],
-      "id": "2f883eef-8bb3-4f68-96c8-9510d46aa90d",
+      "id": "03279360-44a6-47cf-9137-3399f05df60f",
       "name": "Filter (only English)",
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "d428d395-c214-4dd1-b987-5559f889d732",
-              "leftValue": "={{Object.keys($node[\"Filter (only English)\"].json).length}}",
-              "rightValue": 2,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        -160,
-        880
-      ],
-      "id": "46c2e7d5-e539-45fe-93a8-3f5dfe58ac2b",
-      "name": "If English"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        48,
-        896
-      ],
-      "id": "c72746ff-48f4-4f19-9af5-1ba7744d7778",
-      "name": "No Operation, do nothing2"
     },
     {
       "parameters": {
@@ -766,10 +474,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        384,
-        800
+        128,
+        272
       ],
-      "id": "15e98fa9-57c4-4ebc-a086-2b0ad2de8f7a",
+      "id": "58b8fa6d-00f5-47cb-99c9-26c65a4a3f28",
       "name": "Ollama Chat Model",
       "credentials": {
         "ollamaApi": {
@@ -786,10 +494,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        1136,
-        768
+        864,
+        272
       ],
-      "id": "9997db2e-8347-44eb-bb1f-e1ed70e3a46b",
+      "id": "f9052614-7866-48ab-98a0-b2d0bb6da77b",
       "name": "Ollama Chat Model1",
       "credentials": {
         "ollamaApi": {
@@ -805,55 +513,55 @@
             {
               "id": "7cc791bd-3fc7-4785-851e-2c592d00ee3c",
               "name": "title",
-              "value": "={{ $json.title || $json.jobTitle || $json.jobtitle || $('Extract Job ID').item.json.jobTitle|| $('Extract Job ID').item.json.title || 'No title' }}",
+              "value": "={{ $json.title || $json.jobTitle || $json.jobtitle || $('Loop Over Items').item.json.jobTitle||$('Extract Job ID').item.json.jobTitle|| $('Extract Job ID').item.json.job_title|| $('Extract Job ID').item.json.title || 'No title' }}",
               "type": "string"
             },
             {
               "id": "28d77d41-2f93-482d-95c0-44e53470300c",
               "name": "company",
-              "value": "={{ $json.company || $json.companyName || $json.hiringOrganization?.name || $('Extract Job ID').item.json.companyName ||$('Extract Job ID').item.json.company || 'No company' }}",
+              "value": "={{ $json.company || $json.companyName || $json.hiringOrganization?.name || $('Extract Job ID').item.json.companyName || $('Extract Job ID').item.json.company_name ||$('Extract Job ID').item.json.company ||$('Loop Over Items').item.json.companyName || 'No company' }}",
               "type": "string"
             },
             {
               "id": "409dd068-95c2-4fe3-a99d-703f8ab412c9",
               "name": "location",
-              "value": "={{ $json.location || $json.jobLocation?.address?.addressLocality || $json.city || $('Extract Job ID').item.json.location || 'No location' }}",
+              "value": "={{ $json.location || $json.jobLocation?.address?.addressLocality || $json.city ||$('Loop Over Items').item.json.location || $('Extract Job ID').item.json.location || 'No location' }}",
               "type": "string"
             },
             {
               "id": "2f29e323-ca47-4e73-9ccc-e6716e4c3441",
               "name": "description",
-              "value": "={{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || $('Extract Job ID').item.json.description || $json.jobDescription || 'No description') }}",
+              "value": "={{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || $('Extract Job ID').item.json.description || $('Extract Job ID').item.json.job_description || $json.jobDescription || $('Extract Job Description').item.json.description|| 'No description') }}",
               "type": "string"
             },
             {
               "id": "bf644f38-bd07-4e8e-9aa1-89e4660abd04",
               "name": "employmentType",
-              "value": "={{ $json.employmentType || $('Extract Job ID').item.json.employmentType || $json.workplaceType || '-' }}",
+              "value": "={{ $json.employmentType || $('Extract Job ID').item.json.employmentType || $('Extract Job ID').item.json.employment_type || $json.workplaceType || '-' }}",
               "type": "string"
             },
             {
               "id": "e042e9bd-cd6e-4019-98fe-b390689c12b5",
               "name": "jobId",
-              "value": "={{ $('Extract Job ID').item.json.jobId || $json.id || $json.jobId || $('Extract Job ID').item.json.jobId || 'No iD' }}",
+              "value": "={{ $('Extract Job ID').item.json.jobId ||  $('Extract Job ID').item.json.job_id||$('Loop Over Items').item.json.jobId ||$('Loop Over Items').item.json.jobId || $json.id || $json.jobId || $('Extract Job ID').item.json.jobId || 'No iD' }}",
               "type": "string"
             },
             {
               "id": "60e5391f-479f-4bf0-ac74-477355b09c56",
               "name": "date",
-              "value": "={{ $json.datePosted ? new Date($json.datePosted).toISOString().split('T')[0] : ($('Extract Job ID').item.json.postedAt ? new Date($('Extract Job ID').item.json.postedAt).toISOString().split('T')[0] : $('Extract Job ID').item.json.postedDate) }}",
+              "value": "={{ $json.datePosted||$('Loop Over Items').item.json.postedAt ? new Date($json.datePosted||$('Loop Over Items').item.json.postedAt).toISOString().split('T')[0] : ($('Extract Job ID').item.json.postedAt ? new Date($('Extract Job ID').item.json.postedAt).toISOString().split('T')[0] : $('Extract Job ID').item.json.postedDate||$('Extract Job ID').item.json.time_posted) }}",
               "type": "string"
             },
             {
               "id": "1bfc8ede-c07f-4247-8300-fd98f44ffe5b",
               "name": "salary",
-              "value": "={{      (() => {       const s = $json.baseSalary || $json.salary || {};       if (!s || !s.value) return '-';       let result = '';       if (s.value.minValue != null) result += s.value.minValue;       if (s.value.maxValue != null) result += ` - ${s.value.maxValue}`;       if (s.currency) result += ` ${s.currency}`;       if (s.value.unitText) result += ` (per ${s.value.unitText})`;       return result.trim() || $('Extract Job ID').item.json.slary;     })()   }}",
+              "value": "={{\n(() => {\n  const s = $json.baseSalary || $json.salary || {};\n  const v = s?.value;\n\n  const fallback =\n    $('Extract Job ID').item.json.salary ||\n    $('Extract Job ID').item.json.salary_range;\n\n  if (!v) return fallback || '-';\n\n  let parts = [];\n\n  if (v.minValue != null && v.maxValue != null) {\n    parts.push(`${v.minValue} - ${v.maxValue}`);\n  } else if (v.minValue != null) {\n    parts.push(`${v.minValue}`);\n  } else if (v.maxValue != null) {\n    parts.push(`${v.maxValue}`);\n  }\n\n  let result = parts.join('');\n\n  if (s.currency) result += ` ${s.currency}`;\n  if (s.unitText || v.unitText) {\n    result += ` (per ${s.unitText || v.unitText})`;\n  }\n\n  return result.trim() || fallback || '-';\n})()\n}}",
               "type": "string"
             },
             {
               "id": "dca7a46f-eb25-4e32-b8df-8d0035cf2360",
               "name": "link",
-              "value": "={{ $('Extract Job ID').item.json.jobUrl ||$('Extract Job ID').item.json.link || $json.url || $json.jobUrl || $json.linkedinUrl || $json.hiringOrganization?.sameAs || '-' }}",
+              "value": "={{ $('Extract Job ID').item.json.jobUrl || $('Extract Job ID').item.json.job_url ||$('Extract Job ID').item.json.link || $json.url || $json.jobUrl || $json.linkedinUrl || $json.hiringOrganization?.sameAs || $('Loop Over Items').item.json.jobUrl || '-' }}",
               "type": "string"
             },
             {
@@ -865,7 +573,7 @@
             {
               "id": "06dbec74-67cd-4957-b4cc-1ef68bb5c6c5",
               "name": "employmentType",
-              "value": "={{$json.employmentType || $json.workplaceType || '-'}}",
+              "value": "={{$json.employmentType || $json.workplaceType || $('Loop Over Items').item.json.workplaceType || '-'}}",
               "type": "string"
             }
           ]
@@ -875,10 +583,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        880,
-        624
+        672,
+        96
       ],
-      "id": "62659293-084b-4326-8647-7b1bb3b10a9c",
+      "id": "de1842df-5985-49ce-a86a-3b59d1f764ca",
       "name": "Prepare for Full Generator"
     },
     {
@@ -889,10 +597,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1328,
-        496
+        1152,
+        224
       ],
-      "id": "79785ff0-fdf0-410e-a9cf-ce09a16d04dd",
+      "id": "089c8bcb-31c6-421b-b850-9e90b751ea17",
       "name": "Format output"
     },
     {
@@ -904,180 +612,45 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1440,
-        352
+        1184,
+        480
       ],
-      "id": "46ac1ad7-ffd5-4b8f-adec-14c008208d2e",
+      "id": "a295a404-a616-44a8-a020-7af24feb585a",
       "name": "Combine output"
     },
     {
       "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const isRemote = $json.isRemote && $('Get the output of an agent').item.json.workplaceType|| \"\";\n\nif (isRemote) {\n  return {...$json, source: 'phantombuster'};\n}"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1200,
-        208
-      ],
-      "id": "f1876410-2cc5-4d6f-8ede-6b2225b6be9e",
-      "name": "Filter (only remote)"
-    },
-    {
-      "parameters": {
-        "mode": "combine",
-        "fieldsToMatchString": "companyName",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        -224,
-        512
-      ],
-      "id": "82a33bf5-68a3-4c06-818f-1f6a5bb475ad",
-      "name": "Combine fields"
-    },
-    {
-      "parameters": {
-        "sendTo": "palitsanastasia3.ap@gmail.com",
-        "subject": "=⚠️ Apify Run ABORTED   ",
-        "message": "=Status: {{ $json.status }}  Message: {{ $json.statusMessage }}  Total cost: ${{ $json.usageTotalUsd }}   Console: {{ $json.consoleUrl }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        720,
-        208
-      ],
-      "id": "2e248c12-ecd7-4d7e-9271-f8a215c60b3c",
-      "name": "Send status message",
-      "webhookId": "0e30695f-24dd-42de-9f39-4d50e23f88eb",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "nfh52AoxMIl4y4iM",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sendTo": "palitsanastasia3.ap@gmail.com",
-        "subject": "=❌ Apify Run Error",
-        "message": "=Message: {{ $json.error }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [
-        656,
-        336
-      ],
-      "id": "0fa52099-dd1d-4c75-aacb-d2ab88acaf4a",
-      "name": "Send error message",
-      "webhookId": "b3e168c6-4c37-439b-b2b1-9e99c1b58b0c",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "nfh52AoxMIl4y4iM",
-          "name": "Gmail account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "toJson",
-        "options": {
-          "fileName": "apify-test.json"
-        }
-      },
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        -208,
-        224
-      ],
-      "id": "bbe637ed-51e0-4797-8216-edfc48546130",
-      "name": "Convert to File"
-    },
-    {
-      "parameters": {
-        "operation": "write",
-        "fileName": "/home/node/.n8n-files/scraper_jobs/latest.json",
-        "options": {
-          "append": false
-        }
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        -48,
-        224
-      ],
-      "id": "9d9d0938-ee5f-43b6-8706-05702e98ddd7",
-      "name": "Read/Write Files from Disk"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
+        "workflowInputs": {
+          "values": [
             {
-              "id": "745ce7a3-6903-4eb2-a43e-68db66050162",
-              "leftValue": "={{ $json.TEST_MODE}}",
-              "rightValue": "=true",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "name": "data",
+              "type": "array"
             }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
+          ]
+        }
       },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
       "position": [
-        -544,
-        224
+        -1296,
+        368
       ],
-      "id": "8b4150d7-b806-408a-9b14-66eea132b970",
-      "name": "If TEST_MODE"
+      "id": "eca6bd0d-d606-4896-ae24-94de98cdddb0",
+      "name": "When Executed by Another Workflow"
     },
     {
       "parameters": {
-        "fileSelector": "/home/node/.n8n-files/scraper_jobs/jobs.json",
         "options": {}
       },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
       "position": [
-        -368,
-        -16
+        -832,
+        368
       ],
-      "id": "89f1fca6-afbf-4fa5-9fa1-f2fc7a18b49c",
-      "name": "Read/Write Files from Disk1"
-    },
-    {
-      "parameters": {
-        "operation": "fromJson",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1.1,
-      "position": [
-        -208,
-        -16
-      ],
-      "id": "882d437e-7ec6-4ca5-99cd-259eec56de7b",
-      "name": "Extract from File"
+      "id": "77c2009f-61d5-4bb1-815e-ff847fe17fb4",
+      "name": "Loop Over Items",
+      "retryOnFail": true
     },
     {
       "parameters": {
@@ -1087,46 +660,152 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        0,
-        -16
+        -1024,
+        368
       ],
-      "id": "cf5fdc7e-dfa8-43c3-97ff-73c5c50a7a47",
-      "name": "Split Out"
+      "id": "2e471ca9-b501-4d4e-866e-5cce08da6a02",
+      "name": "Split Out",
+      "disabled": true
     },
     {
       "parameters": {
-        "mode": "raw",
-        "jsonOutput": "{\n  \"TEST_MODE\": \"false\"\n}",
+        "jsCode": "let totalAdded = 0;\n\ntry {\n  // Pulls all historical execution data specifically from the final Google Sheets node\n  const successfulAppends = $('Append row in sheet').all();\n  totalAdded = successfulAppends.length;\n} catch (error) {\n  // If the node never ran (0 jobs matched your score/filters), set counter to 0\n  totalAdded = 0;\n}\n\n// Returns a clean value back to the parent workflow\nreturn [{ json: { total_added_today: totalAdded } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        176
+      ],
+      "id": "c0d780b3-8df2-4c7e-93b2-45852915c124",
+      "name": "Return number of jobs"
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=🚨 n8n Automation Error: \n\nResource Not Found 🚨  \n\nWorkflow: subworkflow-fetch-jobs-or-get-from-disk \n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}  \n\nAn external resource request failed (404 Page Structure Received).  \n\nDetails: \n• Status: The resource you are requesting could not be found (LinkedIn URL might be dead or changed). \n• Node Name: {{ $execution.error?.node?.name || 'HTTP / Scraper Node' }}  \n🔍 Raw Snippet: {{ $json.message ? $json.message.substring(0, 200) : 'HTML/CSS Payload detected instead of JSON.' }}...  \n🔗 View Execution Details: {{ $execution.resumeUrl || $execution.url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -112,
+        752
+      ],
+      "id": "1424c0f4-c1bf-461d-a14f-1a26f53adfcc",
+      "name": "Send a text message",
+      "webhookId": "009c40f6-2486-4c2c-b897-03fbdf160db6",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendSticker",
+        "chatId": "491664927",
+        "file": "CAACAgIAAxkBAAIBBWoa6s4z23qGoH4DWfEjI2j0nu7xAAJCEAACM8UpSZAO1BGnKkqCOwQ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        752
+      ],
+      "id": "4d22c47f-8bd8-4f28-b9c2-28b375a5fe25",
+      "name": "Send a sticker",
+      "webhookId": "9bfce98d-5583-4791-96da-5963eb3c647c",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e94ca148-19a1-4d27-8c3d-8a74dbf49fe3",
+              "leftValue": "={{ $json.jobUrl ||  $json.job_url  }}",
+              "rightValue": "undefined",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "2fc3d737-bdd6-40be-980c-3421eb9576b5",
+              "leftValue": "={{ $json.jobUrl ||  $json.job_url  }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "1ea0de9e-f27f-4839-af4a-45d4a4aaec5b",
+              "leftValue": "={{ $json.jobUrl ||  $json.job_url  }}",
+              "rightValue": "''",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
         "options": {}
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
       "position": [
-        -704,
-        224
+        -688,
+        560
       ],
-      "id": "5752d5df-bd73-452f-bc2c-da6b782d3f53",
-      "name": "Set mode"
+      "id": "3668c554-3135-42cd-b419-e36da0c9dd33",
+      "name": "Filter valid URL"
+    },
+    {
+      "parameters": {
+        "operation": "getOutput",
+        "agentId": "6824372766949849",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        -1168,
+        144
+      ],
+      "id": "ef97a590-a45b-4fcf-b310-f411b59d797e",
+      "name": "Get the output of an agent",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "mBNMJhCBqt6LAe8H",
+          "name": "Phantombuster account"
+        }
+      }
     }
   ],
   "pinData": {},
   "connections": {
-    "Get dataset items": {
-      "main": [
-        [
-          {
-            "node": "Filter (only English and notTemporaryContract)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Append row in sheet": {
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }
@@ -1138,18 +817,6 @@
         [
           {
             "node": "Append row in sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Vacancy": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Check source",
             "type": "main",
             "index": 0
           }
@@ -1236,100 +903,11 @@
         ]
       ]
     },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "Vacancy",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "No Operation, do nothing": {
       "main": [
         [
           {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Status SUCCEDED": {
-      "main": [
-        [
-          {
-            "node": "Get dataset items",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Error or status",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter (only English and notTemporaryContract)": {
-      "main": [
-        [
-          {
-            "node": "Go to loop",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Run an Actor": {
-      "main": [
-        [
-          {
-            "node": "Convert to File",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Status SUCCEDED",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get the output of an agent": {
-      "main": [
-        [
-          {
-            "node": "Filter (only remote)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Status message": {
-      "main": [
-        [
-          {
-            "node": "Get the output of an agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Error message": {
-      "main": [
-        [
-          {
-            "node": "Get the output of an agent",
+            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }
@@ -1366,53 +944,10 @@
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Schedule Trigger": {
-      "main": [
-        [
-          {
-            "node": "Set mode",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Error or status": {
-      "main": [
-        [
-          {
-            "node": "Status message",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send status message",
-            "type": "main",
-            "index": 0
-          }
         ],
         [
           {
-            "node": "Error message",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send error message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Go to loop": {
-      "main": [
-        [
-          {
-            "node": "Vacancy",
+            "node": "Send a text message",
             "type": "main",
             "index": 0
           }
@@ -1423,19 +958,14 @@
       "main": [
         [
           {
-            "node": "Extract Job ID",
+            "node": "Get row(s) in sheet",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Get full job",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Combine fields",
+            "node": "Filter valid URL",
             "type": "main",
             "index": 0
           }
@@ -1446,36 +976,7 @@
       "main": [
         [
           {
-            "node": "If English",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If English": {
-      "main": [
-        [
-          {
-            "node": "Combine fields",
-            "type": "main",
-            "index": 1
-          }
-        ],
-        [
-          {
-            "node": "No Operation, do nothing2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "No Operation, do nothing2": {
-      "main": [
-        [
-          {
-            "node": "Vacancy",
+            "node": "Extract Job ID",
             "type": "main",
             "index": 0
           }
@@ -1542,29 +1043,7 @@
         ]
       ]
     },
-    "Filter (only remote)": {
-      "main": [
-        [
-          {
-            "node": "Go to loop",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Combine fields": {
-      "main": [
-        [
-          {
-            "node": "Extract Job ID",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send status message": {
+    "When Executed by Another Workflow": {
       "main": [
         [
           {
@@ -1575,73 +1054,18 @@
         ]
       ]
     },
-    "Send error message": {
+    "Loop Over Items": {
       "main": [
         [
           {
-            "node": "Get the output of an agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Convert to File": {
-      "main": [
-        [
-          {
-            "node": "Read/Write Files from Disk",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read/Write Files from Disk": {
-      "main": [
-        [
-          {
-            "node": "Status SUCCEDED",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If TEST_MODE": {
-      "main": [
-        [
-          {
-            "node": "Read/Write Files from Disk1",
+            "node": "Return number of jobs",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Run an Actor",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read/Write Files from Disk1": {
-      "main": [
-        [
-          {
-            "node": "Extract from File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File": {
-      "main": [
-        [
-          {
-            "node": "Split Out",
+            "node": "Check source",
             "type": "main",
             "index": 0
           }
@@ -1652,18 +1076,51 @@
       "main": [
         [
           {
-            "node": "Filter (only English and notTemporaryContract)",
+            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Set mode": {
+    "Send a text message": {
       "main": [
         [
           {
-            "node": "If TEST_MODE",
+            "node": "Send a sticker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a sticker": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter valid URL": {
+      "main": [
+        [
+          {
+            "node": "Get full job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get the output of an agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
             "type": "main",
             "index": 0
           }
@@ -1676,11 +1133,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "efd9d419-f57f-405c-b3cc-b3aba72e604d",
+  "versionId": "81de7763-8f19-48b6-b325-d1d33556e65c",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
   },
-  "id": "MTS4wUh0YURi5WwU",
+  "id": "NrGH6Tr8EFMwEpO0",
   "tags": []
 }

@@ -1,0 +1,172 @@
+{
+  "name": "error-subworkflow-fetch-jobs-or-get-from-disk",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        160
+      ],
+      "id": "6868bcc2-b82e-4826-af1f-38bd55395b33",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "reaction",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B72N13J85",
+          "mode": "list",
+          "cachedResultName": "errors"
+        },
+        "timestamp": "={{ $json.message_timestamp }}",
+        "name": "-1"
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        624,
+        32
+      ],
+      "id": "6284e6be-0fb9-4efe-bd12-a38bde0a336f",
+      "name": "Add a reaction",
+      "webhookId": "b32c95ef-dca3-4d81-869b-b385b17bc20c",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendSticker",
+        "chatId": "491664927",
+        "file": "CAACAgIAAxkBAAPjahrNJ2bc2rEEB-onVTGVBCsH9ZAAAlgRAAK-EShJHLQBkRXkDBA7BA",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        256
+      ],
+      "id": "760f1989-82cf-4b3f-84b4-049ee76ec950",
+      "name": "Send a sticker",
+      "webhookId": "f0994f71-6b8f-4f7b-8cd0-ee8792cc19fc",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0B72N13J85",
+          "mode": "list",
+          "cachedResultName": "errors"
+        },
+        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: error-subworkflow-fetch-jobs-or-get-from-disk\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \n\nAn error occurred while trying to fetch new jobs or read data from the disk.   \n\nDetails: • Mode: {{ $execution.mode || 'Unknown Node' }} • Error Message: {{ $execution.resumeUrl }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        368,
+        32
+      ],
+      "id": "d4851be2-765b-441a-bd51-4824942d7b0b",
+      "name": "Send a message",
+      "webhookId": "8d6b73c9-20c1-43fe-993a-c3e32864d916",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "HzR2sIL7BIw1UM74",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: error-subworkflow-fetch-jobs-or-get-from-disk\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \n\nAn error occurred while trying to fetch new jobs or read data from the disk.   \nDetails:\n• Error id: {{ $execution.id }}\n• Error Mode: {{ $execution.mode }}\n\n🔗 View Execution Details:\n{{ $execution.resumeUrl }}, {{ $execution.resumeFormUrl }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        256
+      ],
+      "id": "230da59a-edf3-487e-8708-f1db5e531011",
+      "name": "Send a text message",
+      "webhookId": "73165127-cd71-45d6-888d-4f4d908db73c",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Add a reaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Send a sticker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8f165168-a036-4954-b08a-ddb4fa7dc1c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
+  },
+  "id": "bdSF6e1MzCqymRmS",
+  "tags": []
+}
