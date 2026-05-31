@@ -24,7 +24,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"TEST_MODE\": \"false\"\n}",
+        "jsonOutput": "{\n  \"TEST_MODE\": \"true\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
@@ -164,7 +164,7 @@
       ],
       "id": "af93bd8a-06bf-4ce3-b749-c4313af24e42",
       "name": "Call 'subworkflow-evaluate-and-save-job'",
-      "alwaysOutputData": true
+      "alwaysOutputData": false
     },
     {
       "parameters": {
@@ -197,7 +197,7 @@
         224
       ],
       "id": "a90d8a72-0aad-4a6d-ae55-13925a7cc1a9",
-      "name": "Get today jobs",
+      "name": "Get new jobs",
       "alwaysOutputData": false
     },
     {
@@ -207,7 +207,7 @@
           "value": "OBN6W1xv8afk8Hkn",
           "mode": "list",
           "cachedResultUrl": "/workflow/OBN6W1xv8afk8Hkn",
-          "cachedResultName": "subworkflow-failed-messages"
+          "cachedResultName": "subworkflow-unsuccess-messages"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -226,7 +226,7 @@
         320
       ],
       "id": "887f4eb3-51f0-4540-85b4-cbb8a7e3e0f2",
-      "name": "Call 'subworkflow-failed-messages'"
+      "name": "Call 'subworkflow-unsuccess-messages'"
     }
   ],
   "pinData": {},
@@ -268,14 +268,14 @@
       "main": [
         [
           {
-            "node": "Get today jobs",
+            "node": "Get new jobs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get today jobs": {
+    "Get new jobs": {
       "main": [
         [
           {
@@ -286,7 +286,7 @@
         ],
         [
           {
-            "node": "Call 'subworkflow-failed-messages'",
+            "node": "Call 'subworkflow-unsuccess-messages'",
             "type": "main",
             "index": 0
           }
@@ -294,12 +294,12 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "62a38158-c6dd-4a4a-88ee-82cf18990639",
+  "versionId": "ddd69543-9049-421b-9067-6b7d8cf6d79d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

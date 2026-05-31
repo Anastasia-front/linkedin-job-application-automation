@@ -23,7 +23,7 @@
           "cachedResultName": "errors"
         },
         "timestamp": "={{ $json.message_timestamp }}",
-        "name": "-1"
+        "name": "collision"
       },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
@@ -51,8 +51,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        640,
-        256
+        368,
+        240
       ],
       "id": "760f1989-82cf-4b3f-84b4-049ee76ec950",
       "name": "Send a sticker",
@@ -102,8 +102,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        368,
-        256
+        640,
+        240
       ],
       "id": "230da59a-edf3-487e-8708-f1db5e531011",
       "name": "Send a text message",
@@ -127,7 +127,7 @@
             "index": 0
           },
           {
-            "node": "Send a text message",
+            "node": "Send a sticker",
             "type": "main",
             "index": 0
           }
@@ -147,9 +147,14 @@
     },
     "Send a text message": {
       "main": [
+        []
+      ]
+    },
+    "Send a sticker": {
+      "main": [
         [
           {
-            "node": "Send a sticker",
+            "node": "Send a text message",
             "type": "main",
             "index": 0
           }
@@ -162,7 +167,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "8f165168-a036-4954-b08a-ddb4fa7dc1c9",
+  "versionId": "6e6a92de-ad0a-4bf1-8d40-aa773e84d0c3",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

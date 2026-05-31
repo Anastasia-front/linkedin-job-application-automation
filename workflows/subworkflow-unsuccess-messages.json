@@ -1,16 +1,16 @@
 {
-  "name": "subworkflow-failed-messages",
+  "name": "subworkflow-unsuccess-messages",
   "nodes": [
     {
       "parameters": {
         "chatId": "491664927",
-        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: subworkflow-failed-messages\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \nNode Name: {{ $execution.error?.node?.name || 'Check Node' }}\nMessage: {{ $json.message ? $json.message.substring(0, 200) : 'Check the full workflow' }}\n\n🔗 View Execution Details:\n{{ $execution.resumeUrl }}, {{ $execution.resumeFormUrl }}",
+        "text": "=🔍 Vacancy Update\n\nNo new vacancies matching your criteria were found at this time.\n♻️ Next automatic search will run in 6 hours to check for fresh listings.",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        384,
+        640,
         128
       ],
       "id": "7b6c564d-bd79-4515-a47a-30ec601cd89c",
@@ -33,7 +33,7 @@
           "mode": "list",
           "cachedResultName": "errors"
         },
-        "text": "=🚨 n8n Automation Error 🚨    \n\nWorkflow: subworkflow-failed-messages\n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}   \nNode Name: {{ $execution.error?.node?.name || 'Check Node' }}\nMessage: {{ $json.message ? $json.message.substring(0, 200) : 'Check the full workflow' }}\n\n🔗 View Execution Details:\n{{ $execution.resumeUrl }}, {{ $execution.resumeFormUrl }}",
+        "text": "=🔍 Vacancy Update\n\nNo new vacancies matching your criteria were found at this time.\n♻️ Next automatic search will run in 6 hours to check for fresh listings.",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
@@ -63,7 +63,7 @@
           "cachedResultName": "errors"
         },
         "timestamp": "={{ $json.message_timestamp }}",
-        "name": "-1"
+        "name": "rocket"
       },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
@@ -85,13 +85,13 @@
       "parameters": {
         "operation": "sendSticker",
         "chatId": "491664927",
-        "file": "CAACAgIAAxkBAAPfahrIoIKQr1B0e1aQAAFSk--FpdF1AAKjEAAC8XeoSH47GBLDl9VBOwQ",
+        "file": "CAACAgIAAxkBAAIBMWocLlFTIxmncxCLqex_Mj3LTLlRAAINAAPANk8TpPnh9NR4jVM7BA",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        656,
+        400,
         128
       ],
       "id": "2d09a24f-96fb-4fab-8b7b-7ee0008c02be",
@@ -138,7 +138,17 @@
     },
     "Send a text message": {
       "main": [
+        []
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
         [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Send a sticker",
             "type": "main",
@@ -147,16 +157,11 @@
         ]
       ]
     },
-    "When Executed by Another Workflow": {
+    "Send a sticker": {
       "main": [
         [
           {
             "node": "Send a text message",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send a message",
             "type": "main",
             "index": 0
           }
@@ -164,13 +169,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "95ca9a73-97cd-4727-980f-11d5a60367b1",
+  "versionId": "a5f0d94e-d18c-4483-89dd-85997c9c6ed9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

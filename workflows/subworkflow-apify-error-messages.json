@@ -1,0 +1,249 @@
+{
+  "name": "subworkflow-apify-error-messages",
+  "nodes": [
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=⚠️ Apify Run ABORTED  \nStatus: {{ $json.status }} \nMessage: {{ $json.statusMessage }} \nTotal cost: ${{ $json.usageTotalUsd }}  \nConsole: {{ $json.consoleUrl }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -544
+      ],
+      "id": "2674cbff-0da4-4211-b254-e27a514f7ca2",
+      "name": "Status message",
+      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "491664927",
+        "text": "=❌ Apify Run Error  \n\nMessage: {{ $json.error }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -32
+      ],
+      "id": "8f7ccec0-e3ca-45c7-9f81-848aa271b6e9",
+      "name": "Error message",
+      "webhookId": "29c3ffd5-2669-49ef-b338-4d6b8ffbc4f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8b807c46-6197-448b-b5ef-723d6b6c41ed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "abort",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -288
+      ],
+      "id": "11930545-41dc-447e-9ba3-bbd7615cc1b1",
+      "name": "Error or status"
+    },
+    {
+      "parameters": {
+        "sendTo": "palitsanastasia3.ap@gmail.com",
+        "subject": "=⚠️ Apify Run ABORTED   ",
+        "message": "=Status: {{ $json.status }}  Message: {{ $json.statusMessage }}  Total cost: ${{ $json.usageTotalUsd }}   Console: {{ $json.consoleUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        -368
+      ],
+      "id": "c570dcf7-77a0-4099-a3a2-1b5726dd97a7",
+      "name": "Send status message",
+      "webhookId": "0e30695f-24dd-42de-9f39-4d50e23f88eb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "nfh52AoxMIl4y4iM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "palitsanastasia3.ap@gmail.com",
+        "subject": "=❌ Apify Run Error",
+        "message": "=Message: {{ $json.error }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        -176
+      ],
+      "id": "9da0b3e1-55d7-499b-a8a8-33574dedd58d",
+      "name": "Send error message",
+      "webhookId": "b3e168c6-4c37-439b-b2b1-9e99c1b58b0c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "nfh52AoxMIl4y4iM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -288
+      ],
+      "id": "97974a0f-e017-4dc5-8364-16c909854bb2",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        -288
+      ],
+      "id": "c6dd5059-783a-4ae3-963b-d9977603b3d1",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Status message": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error message": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error or status": {
+      "main": [
+        [
+          {
+            "node": "Status message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send status message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send status message": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send error message": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Error or status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ff0506cc-2202-455a-a09d-547bacf47665",
+  "meta": {
+    "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
+  },
+  "id": "gLbwb5LpEIgzeUa2",
+  "tags": []
+}

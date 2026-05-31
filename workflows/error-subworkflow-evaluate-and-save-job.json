@@ -74,7 +74,7 @@
           "cachedResultName": "errors"
         },
         "timestamp": "={{ $json.message_timestamp }}",
-        "name": "-1"
+        "name": "warning"
       },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.4,
@@ -168,7 +168,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "5b6a56f7-39c2-434b-8d3d-cbeac0d0abf4",
+  "versionId": "e4aed18f-9d62-4851-b6cf-ba333b4f6e76",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
