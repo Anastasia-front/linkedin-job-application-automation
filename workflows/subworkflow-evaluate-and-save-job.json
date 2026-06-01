@@ -167,7 +167,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1024,
+        1232,
         848
       ],
       "id": "44266864-5ff5-4a00-8e80-16adfa042cab",
@@ -188,7 +188,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1200,
+        1408,
         656
       ],
       "id": "cd38ba66-93af-43d9-af3a-9f02aa9e7cc4",
@@ -204,7 +204,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        336,
+        544,
         544
       ],
       "id": "76b63b88-c7a8-4736-80f8-18e4903abe6d",
@@ -240,7 +240,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        -96,
+        112,
         368
       ],
       "id": "7e0b8a95-66ae-4aaa-b36b-cf05bb47ad79",
@@ -282,7 +282,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        128,
+        336,
         368
       ],
       "id": "ec6472aa-a53e-4d59-9c4f-2f378971f798",
@@ -300,7 +300,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        336,
+        544,
         112
       ],
       "id": "50ed07bc-7df3-4f9c-89c7-941527302254",
@@ -317,7 +317,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1072,
+        1280,
         96
       ],
       "id": "5298a96f-a361-48ac-9275-103e5f1fecd1",
@@ -352,7 +352,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        640,
+        848,
         112
       ],
       "id": "b71d5aa8-a105-46f6-9567-42e2cb9477d1",
@@ -365,7 +365,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        752,
+        960,
         384
       ],
       "id": "2fd023d5-03b3-4620-8f9f-6619c5d04837",
@@ -379,7 +379,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -64,
+        144,
         544
       ],
       "id": "e04f2022-d09b-4d2a-b852-67b19c7c0f15",
@@ -400,7 +400,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -288,
+        -80,
         560
       ],
       "id": "59b56bd5-dcaa-4d5a-adf3-31915fa7d43c",
@@ -436,7 +436,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -432,
+        -224,
         384
       ],
       "id": "0b1d090b-c715-4ce2-b0f0-3711e26e5368",
@@ -450,7 +450,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        336,
+        544,
         272
       ],
       "id": "58b8fa6d-00f5-47cb-99c9-26c65a4a3f28",
@@ -470,7 +470,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        1072,
+        1280,
         272
       ],
       "id": "f9052614-7866-48ab-98a0-b2d0bb6da77b",
@@ -507,7 +507,7 @@
             {
               "id": "2f29e323-ca47-4e73-9ccc-e6716e4c3441",
               "name": "description",
-              "value": "={{ Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || ($('Extract Job ID').isExecuted ? ($('Extract Job ID').item.json.description || $('Extract Job ID').item.json.job_description) : null) || ($('Extract Job Description').isExecuted ? $('Extract Job Description').item.json.description : null) || ($('Loop Over Items').isExecuted ? $('Loop Over Items').item.json.job_description || $('Loop Over Items').item.json.jobDescription : null) || 'No description') }}",
+              "value": "={{ (Array.isArray($json.jobDescription) ? $json.jobDescription.join('\\n') : ($json.jobDescription || $json.description || ($('Extract Job ID').isExecuted ? ($('Extract Job ID').item.json.description || $('Extract Job ID').item.json.job_description) : null) || ($('Extract Job Description').isExecuted ? $('Extract Job Description').item.json.description : null) || ($('Loop Over Items').isExecuted ? $('Loop Over Items').item.json.job_description || $('Loop Over Items').item.json.jobDescription : null) || 'No description')).replace(/\"/g, \"'\") }}",
               "type": "string"
             },
             {
@@ -525,7 +525,7 @@
             {
               "id": "60e5391f-479f-4bf0-ac74-477355b09c56",
               "name": "date",
-              "value": "={{ ($json.datePosted || ($('Loop Over Items').isExecuted ? $('Loop Over Items').item.json.postedAt || $('Loop Over Items').item.json.time_posted : null)) ? new Date($json.datePosted || $('Loop Over Items').item.json.postedAt).toISOString().split('T')[0] : (($('Extract Job ID').isExecuted && $('Extract Job ID').item.json.postedAt) ? new Date($('Extract Job ID').item.json.postedAt).toISOString().split('T')[0] : ($('Extract Job ID').isExecuted ? ($('Extract Job ID').item.json.postedDate || $('Extract Job ID').item.json.time_posted) : null)) || '-' }}",
+              "value": "={{\n(() => {\n  // 1. Gather all possible raw date strings safely checking node execution states\n  const dateRaw = $json.datePosted || \n    ($('Loop Over Items').isExecuted ? ($('Loop Over Items').item.json.postedAt || $('Loop Over Items').item.json.time_posted) : null) || \n    ($('Extract Job ID').isExecuted ? ($('Extract Job ID').item.json.postedAt || $('Extract Job ID').item.json.postedDate || $('Extract Job ID').item.json.time_posted) : null);\n\n  // 2. If nothing is found, return the fallback dashboard dash\n  if (!dateRaw) return '-';\n\n  try {\n    // 3. Try parsing it into a clean YYYY-MM-DD string\n    const parsedDate = new Date(dateRaw);\n    if (!isNaN(parsedDate.getTime())) {\n      return parsedDate.toISOString().split('T')[0];\n    }\n  } catch (e) {\n    // Suppress date conversion crashes gracefully\n  }\n\n  // 4. Return the raw string as a ultimate safety fallback if it can't be converted to ISO\n  return dateRaw || '-';\n})()\n}}",
               "type": "string"
             },
             {
@@ -559,7 +559,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        880,
+        1088,
         96
       ],
       "id": "de1842df-5985-49ce-a86a-3b59d1f764ca",
@@ -573,7 +573,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
+        1568,
         224
       ],
       "id": "089c8bcb-31c6-421b-b850-9e90b751ea17",
@@ -590,12 +590,13 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1392,
+        1600,
         480
       ],
       "id": "a295a404-a616-44a8-a020-7af24feb585a",
       "name": "Combine output",
       "retryOnFail": true,
+      "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     },
     {
@@ -612,8 +613,8 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -1120,
-        368
+        -928,
+        384
       ],
       "id": "eca6bd0d-d606-4896-ae24-94de98cdddb0",
       "name": "When Executed by Another Workflow"
@@ -625,27 +626,13 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -624,
+        -416,
         368
       ],
       "id": "77c2009f-61d5-4bb1-815e-ff847fe17fb4",
       "name": "Loop Over Items",
       "retryOnFail": true,
       "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
-        "fieldToSplitOut": "data",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitOut",
-      "typeVersion": 1,
-      "position": [
-        -848,
-        368
-      ],
-      "id": "2e471ca9-b501-4d4e-866e-5cce08da6a02",
-      "name": "Split Out"
     },
     {
       "parameters": {
@@ -656,7 +643,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        176,
+        384,
         752
       ],
       "id": "1424c0f4-c1bf-461d-a14f-1a26f53adfcc",
@@ -679,7 +666,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        32,
+        240,
         752
       ],
       "id": "4d22c47f-8bd8-4f28-b9c2-28b375a5fe25",
@@ -738,7 +725,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
-        -480,
+        -272,
         560
       ],
       "id": "3668c554-3135-42cd-b419-e36da0c9dd33",
@@ -746,49 +733,37 @@
     },
     {
       "parameters": {
-        "jsCode": "// Access the global workflow storage scope\nconst staticData = $getWorkflowStaticData('global');\n\n// If the counter doesn't exist yet, initialize it at 0\nif (staticData.counter === undefined) {\n  staticData.counter = 0;\n}\n// Add 1 to the global counter\nstaticData.counter += 1;\nconsole.log(staticData.counter)\n\n// Pass whatever data came from Google Sheets straight through safely\nreturn $input.all();"
+        "jsCode": "// Access the global workflow storage scope\nconst staticData = $getWorkflowStaticData('global');\n\n// If the counter doesn't exist yet, initialize it at 0\nif (staticData.counter === undefined) {\n  staticData.counter = 0;\n}\n// Add 1 to the global counter\nstaticData.counter += 1;\n\n// Pass whatever data came from Google Sheets straight through safely\nreturn $input.all();"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1232,
+        1440,
         848
       ],
       "id": "28b256cf-7091-47fa-b785-e44efe8aedfb",
-      "name": "Increment Counter"
+      "name": "Increment Counter",
+      "alwaysOutputData": false
     },
     {
       "parameters": {
-        "jsCode": "// Access the same global workflow storage scope\nconst staticData = $getWorkflowStaticData('global');\n\n// Grab the total or default to 0 if no jobs were appended\nconst finalCount = staticData.counter || 0;\n\n\n\nreturn [{ json: { total_added_today: finalCount } }];\n// CRITICAL: Reset the global counter back to 0 \n// This ensures that the next time this workflow runs from scratch, it starts fresh!\nstaticData.counter = 0;"
+        "jsCode": "// Access the same global workflow storage scope\nconst staticData = $getWorkflowStaticData('global');\n\n// Grab the total or default to 0 if no jobs were appended\nconst finalCount = staticData.counter || 0;\n\nreturn [{ json: { total_added_today: finalCount } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -432,
+        -224,
         176
       ],
       "id": "c0d780b3-8df2-4c7e-93b2-45852915c124",
       "name": "Return number of new jobs"
     },
     {
-      "parameters": {
-        "jsCode": "// FIX: Removed the extra '$' from getWorkflowStaticData\nconst staticData = this.getWorkflowStaticData('global');\n\n// Grab the total or default to 0 if no jobs were appended\nconst finalCount = staticData.counter || 0;\n\n// CRITICAL: Reset the global counter back to 0 \nstaticData.counter = 0;\n\nreturn [{ \n  json: { \n    total_added_today: finalCount,\n    // DEBUGGING SECRETS: Look at these fields in your output panel to inspect!\n    debug_raw_static_data: staticData,\n    debug_is_undefined: (staticData.counter === undefined)\n  } \n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        32,
-        96
-      ],
-      "id": "3f355a69-f587-462c-945f-fe76bef2a88a",
-      "name": "Code in JavaScript"
-    },
-    {
       "parameters": {},
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        336,
+        544,
         384
       ],
       "id": "79ef2508-7a4c-4686-8218-7e781636b808",
@@ -830,7 +805,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
-        144,
+        352,
         544
       ],
       "id": "e3d4ab73-5d75-4195-8f6f-be282c53a29d",
@@ -846,7 +821,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -544,
+        -336,
         752
       ],
       "id": "ff34091f-ade4-4f5e-8390-2e43138b072d",
@@ -868,7 +843,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -400,
+        -192,
         752
       ],
       "id": "f22f02aa-8bed-40e0-b393-d7c24f894f40",
@@ -891,7 +866,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1408,
+        1616,
         736
       ],
       "id": "f10c17ff-6e7b-4f79-8dfc-10fd19614f7e",
@@ -913,7 +888,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1568,
+        1776,
         848
       ],
       "id": "228ac2ed-b06e-4ed2-9d88-586522025a50",
@@ -925,6 +900,44 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.counter = 0;\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        160
+      ],
+      "id": "f6d3b4ed-147e-4bf6-9e4e-44fa7c00c1bf",
+      "name": "Reset Counter"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        384
+      ],
+      "id": "2e471ca9-b501-4d4e-866e-5cce08da6a02",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        160
+      ],
+      "id": "7bb0fd69-0c85-4574-a552-13e0b635a050",
+      "name": "No Operation, do nothing1"
     }
   ],
   "pinData": {},
@@ -1172,6 +1185,11 @@
       "main": [
         [
           {
+            "node": "Reset Counter",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Split Out",
             "type": "main",
             "index": 0
@@ -1198,17 +1216,6 @@
         [
           {
             "node": "Send sticker",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Split Out": {
-      "main": [
-        [
-          {
-            "node": "Loop Over Items",
             "type": "main",
             "index": 0
           }
@@ -1329,6 +1336,28 @@
           }
         ]
       ]
+    },
+    "Reset Counter": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1340,7 +1369,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "74410d91-236c-484a-b133-8725819f80c7",
+  "versionId": "1e036c0e-003c-4d38-a042-b4d822940602",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

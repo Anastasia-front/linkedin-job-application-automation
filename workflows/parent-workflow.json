@@ -48,7 +48,7 @@
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
-            "total_added_today": 0
+            "total_added_today": "={{ $json.total_added_today }}"
           },
           "matchingColumns": [
             "total_added_today"
@@ -299,7 +299,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ddd69543-9049-421b-9067-6b7d8cf6d79d",
+  "versionId": "a912863d-07d3-4a41-983a-a913f21d8eff",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

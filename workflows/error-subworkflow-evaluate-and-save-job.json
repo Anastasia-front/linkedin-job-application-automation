@@ -21,8 +21,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        384,
-        128
+        624,
+        112
       ],
       "id": "9bbc7d5f-9825-4e2f-8b3c-5564a4fd68fc",
       "name": "Send a text message",
@@ -102,8 +102,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        656,
-        128
+        384,
+        112
       ],
       "id": "5bf1764d-d832-464f-9c08-54a51e7efad9",
       "name": "Send a sticker",
@@ -122,12 +122,12 @@
       "main": [
         [
           {
-            "node": "Send a text message",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Send a message",
+            "node": "Send a sticker",
             "type": "main",
             "index": 0
           }
@@ -152,9 +152,14 @@
     },
     "Send a text message": {
       "main": [
+        []
+      ]
+    },
+    "Send a sticker": {
+      "main": [
         [
           {
-            "node": "Send a sticker",
+            "node": "Send a text message",
             "type": "main",
             "index": 0
           }
@@ -168,7 +173,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e4aed18f-9d62-4851-b6cf-ba333b4f6e76",
+  "versionId": "e8b76d0b-f1bb-4fd4-8a21-7608e3ebe456",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
