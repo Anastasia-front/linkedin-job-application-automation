@@ -4,7 +4,29 @@
 
 Built with **n8n** + LLMs + Apify + PhantomBuster.
 
+* before refactoring
 ![Workflow Screenshot](screenshots/workflow-full.png)
+
+* after refactoring
+
+workflow 'main-workflow'
+![workflows/main-workflow](screenshots/workflows/main-workflow.png)
+workflow 'subworkflow-fetch-jobs-or-get-from-disk'
+![workflows/subworkflow-fetch-jobs-or-get-from-disk](screenshots/workflows/subworkflow-fetch-jobs-or-get-from-disk.png)
+workflow 'subworkflow-evaluate-and-save-job'
+![workflows/subworkflow-evaluate-and-save-job](screenshots/workflows/subworkflow-evaluate-and-save-job.png)
+workflow 'subworkflow-success-messsages'
+![workflows/subworkflow-success-messsages](screenshots/workflows/subworkflow-success-messsages.png)
+workflow 'subworkflow-unsuccess-messages'
+![workflows/subworkflow-unsuccess-messages](screenshots/workflows/subworkflow-unsuccess-messages.png)
+workflow 'subworkflow-apify-error-messages'
+![workflows/subworkflow-apify-error-messages](screenshots/workflows/subworkflow-apify-error-messages.png)
+workflow 'error-subworkflow-evaluate-and-save-job'
+![error-subworkflow-evaluate-and-save-job](screenshots/workflows/error-subworkflow-evaluate-and-save-job.png)
+workflow 'error-subworkflow-fetch-jobs-or-get-from-disk'
+![workflows/error-subworkflow-fetch-jobs-or-get-from-disk](screenshots/workflows/error-subworkflow-fetch-jobs-or-get-from-disk.png)
+
+
 
 ## ✨ Features
 
@@ -13,7 +35,7 @@ Built with **n8n** + LLMs + Apify + PhantomBuster.
 - Automatic personalized cover letter generation
 - Deduplication via Google Sheets
 - English language + remote filter
-- Telegram / Gmail errors notifications
+- Telegram / Gmail / Slack errors notifications
 
 ## 🛠 Tech Stack
 
@@ -21,7 +43,7 @@ Built with **n8n** + LLMs + Apify + PhantomBuster.
 - **Scraping**: Apify, PhantomBuster
 - **AI**: Gemini, OpenAI, Groq, Ollama (local), OpenRouter
 - **Storage**: Google Sheets
-- **Notifications**: Telegram, Gmail
+- **Notifications**: Telegram, Gmail, Slack
 - **Deployment**: n8n.cloud + self-hosted option
 
 ## 🚀 Quick Start
