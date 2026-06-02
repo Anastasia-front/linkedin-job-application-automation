@@ -249,24 +249,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2480,
-        -352
+        2464,
+        -336
       ],
       "id": "d55d14c9-b666-4811-af37-e1704b541440",
       "name": "Return array"
-    },
-    {
-      "parameters": {
-        "jsCode": "return [\n  {\n    json: {\n      jobs: $input.all().map(item => item.json)\n    }\n  }\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2288,
-        -352
-      ],
-      "id": "a076e525-6a81-4b82-9e50-2d98a09b2f49",
-      "name": "Code in JavaScript"
     },
     {
       "parameters": {
@@ -345,7 +332,7 @@
     },
     {
       "parameters": {
-        "fileSelector": "/home/node/.n8n-files/scraper_jobs/dataset_apify.json",
+        "fileSelector": "/home/node/.n8n-files/scraper_jobs/latest.json",
         "options": {}
       },
       "type": "n8n-nodes-base.readWriteFile",
@@ -356,6 +343,19 @@
       ],
       "id": "6a0e11d5-aef0-478c-86af-2ab2dd4137f1",
       "name": "Read File from Disk"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      jobs: $input.all().map(item => item.json)\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -336
+      ],
+      "id": "a076e525-6a81-4b82-9e50-2d98a09b2f49",
+      "name": "Prepare data"
     }
   ],
   "pinData": {},
@@ -420,7 +420,7 @@
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Prepare data",
             "type": "main",
             "index": 0
           }
@@ -505,17 +505,6 @@
         []
       ]
     },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "Return array",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Call 'subworkflow-apify-error-messages'": {
       "main": [
         [
@@ -564,6 +553,17 @@
           }
         ]
       ]
+    },
+    "Prepare data": {
+      "main": [
+        [
+          {
+            "node": "Return array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -575,7 +575,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "af1fa043-7c28-4d56-b79b-b1bdbb319f33",
+  "versionId": "92c10960-c737-4254-9efd-23a48da6d67b",
   "meta": {
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
   },

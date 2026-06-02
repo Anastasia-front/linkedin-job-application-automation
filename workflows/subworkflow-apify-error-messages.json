@@ -125,17 +125,6 @@
       }
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        864,
-        -288
-      ],
-      "id": "97974a0f-e017-4dc5-8364-16c909854bb2",
-      "name": "No Operation, do nothing"
-    },
-    {
       "parameters": {
         "inputSource": "passthrough"
       },
@@ -153,24 +142,12 @@
   "connections": {
     "Status message": {
       "main": [
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Error message": {
       "main": [
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Error or status": {
@@ -203,24 +180,12 @@
     },
     "Send status message": {
       "main": [
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Send error message": {
       "main": [
-        [
-          {
-            "node": "No Operation, do nothing",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "When Executed by Another Workflow": {
@@ -240,7 +205,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "ff0506cc-2202-455a-a09d-547bacf47665",
+  "versionId": "576e8810-3643-45c8-9419-e416a03eb39d",
   "meta": {
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
   },

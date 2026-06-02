@@ -167,8 +167,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1232,
-        848
+        2096,
+        400
       ],
       "id": "44266864-5ff5-4a00-8e80-16adfa042cab",
       "name": "Append row in sheet",
@@ -188,8 +188,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1408,
-        656
+        1984,
+        240
       ],
       "id": "cd38ba66-93af-43d9-af3a-9f02aa9e7cc4",
       "name": "Edit Fields"
@@ -204,8 +204,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        544,
-        544
+        912,
+        560
       ],
       "id": "76b63b88-c7a8-4736-80f8-18e4903abe6d",
       "name": "Extract Job ID"
@@ -317,7 +317,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1280,
+        1296,
         96
       ],
       "id": "5298a96f-a361-48ac-9275-103e5f1fecd1",
@@ -379,8 +379,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        144,
-        544
+        448,
+        560
       ],
       "id": "e04f2022-d09b-4d2a-b852-67b19c7c0f15",
       "name": "Extract Job Description"
@@ -400,8 +400,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -80,
-        560
+        160,
+        576
       ],
       "id": "59b56bd5-dcaa-4d5a-adf3-31915fa7d43c",
       "name": "Get full job",
@@ -455,26 +455,6 @@
       ],
       "id": "58b8fa6d-00f5-47cb-99c9-26c65a4a3f28",
       "name": "Ollama Chat Model",
-      "credentials": {
-        "ollamaApi": {
-          "id": "KKfDHtpB7R6joZD1",
-          "name": "Ollama account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "model": "gemma2:2b",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
-      "typeVersion": 1,
-      "position": [
-        1280,
-        272
-      ],
-      "id": "f9052614-7866-48ab-98a0-b2d0bb6da77b",
-      "name": "Ollama Chat Model1",
       "credentials": {
         "ollamaApi": {
           "id": "KKfDHtpB7R6joZD1",
@@ -573,8 +553,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1568,
-        224
+        1616,
+        80
       ],
       "id": "089c8bcb-31c6-421b-b850-9e90b751ea17",
       "name": "Format output",
@@ -590,8 +570,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1600,
-        480
+        1856,
+        80
       ],
       "id": "a295a404-a616-44a8-a020-7af24feb585a",
       "name": "Combine output",
@@ -613,8 +593,8 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -928,
-        384
+        -768,
+        656
       ],
       "id": "eca6bd0d-d606-4896-ae24-94de98cdddb0",
       "name": "When Executed by Another Workflow"
@@ -643,8 +623,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        384,
-        752
+        496,
+        768
       ],
       "id": "1424c0f4-c1bf-461d-a14f-1a26f53adfcc",
       "name": "Send a text message",
@@ -666,8 +646,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        240,
-        752
+        336,
+        768
       ],
       "id": "4d22c47f-8bd8-4f28-b9c2-28b375a5fe25",
       "name": "Send a sticker",
@@ -725,8 +705,8 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
-        -272,
-        560
+        -80,
+        576
       ],
       "id": "3668c554-3135-42cd-b419-e36da0c9dd33",
       "name": "Filter valid URL"
@@ -738,8 +718,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1440,
-        848
+        2224,
+        560
       ],
       "id": "28b256cf-7091-47fa-b785-e44efe8aedfb",
       "name": "Increment Counter",
@@ -752,7 +732,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -224,
+        -208,
         176
       ],
       "id": "c0d780b3-8df2-4c7e-93b2-45852915c124",
@@ -763,7 +743,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        544,
+        592,
         384
       ],
       "id": "79ef2508-7a4c-4686-8218-7e781636b808",
@@ -805,8 +785,8 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.3,
       "position": [
-        352,
-        544
+        656,
+        560
       ],
       "id": "e3d4ab73-5d75-4195-8f6f-be282c53a29d",
       "name": "Filter (only English and not senior or lead)"
@@ -821,8 +801,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -336,
-        752
+        -32,
+        768
       ],
       "id": "ff34091f-ade4-4f5e-8390-2e43138b072d",
       "name": "Send sticker",
@@ -843,35 +823,12 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -192,
-        752
+        112,
+        768
       ],
       "id": "f22f02aa-8bed-40e0-b393-d7c24f894f40",
       "name": "Send text message",
       "webhookId": "009c40f6-2486-4c2c-b897-03fbdf160db6",
-      "credentials": {
-        "telegramApi": {
-          "id": "kfCInsROG3jgx84C",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "sendSticker",
-        "chatId": "491664927",
-        "file": "CAACAgIAAxkBAAIBQGocP3Xk9F5zWGkU-WvDFzyXBcp-AALFEQACsJqxSF1Rnb6QpVfaOwQ",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1616,
-        736
-      ],
-      "id": "f10c17ff-6e7b-4f79-8dfc-10fd19614f7e",
-      "name": "Send sticker error",
-      "webhookId": "9bfce98d-5583-4791-96da-5963eb3c647c",
       "credentials": {
         "telegramApi": {
           "id": "kfCInsROG3jgx84C",
@@ -888,8 +845,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1776,
-        848
+        1712,
+        368
       ],
       "id": "228ac2ed-b06e-4ed2-9d88-586522025a50",
       "name": "Send error message",
@@ -908,7 +865,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -752,
+        -640,
         160
       ],
       "id": "f6d3b4ed-147e-4bf6-9e4e-44fa7c00c1bf",
@@ -922,7 +879,7 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        -656,
+        -592,
         384
       ],
       "id": "2e471ca9-b501-4d4e-866e-5cce08da6a02",
@@ -933,11 +890,54 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -512,
+        -448,
         160
       ],
       "id": "7bb0fd69-0c85-4574-a552-13e0b635a050",
-      "name": "No Operation, do nothing1"
+      "name": "Do nothing"
+    },
+    {
+      "parameters": {
+        "model": "gemma2:2b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        256
+      ],
+      "id": "f9052614-7866-48ab-98a0-b2d0bb6da77b",
+      "name": "Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "KKfDHtpB7R6joZD1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendSticker",
+        "chatId": "491664927",
+        "file": "CAACAgIAAxkBAAIBQGocP3Xk9F5zWGkU-WvDFzyXBcp-AALFEQACsJqxSF1Rnb6QpVfaOwQ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1536,
+        368
+      ],
+      "id": "f10c17ff-6e7b-4f79-8dfc-10fd19614f7e",
+      "name": "Send error sticker",
+      "webhookId": "9bfce98d-5583-4791-96da-5963eb3c647c",
+      "credentials": {
+        "telegramApi": {
+          "id": "kfCInsROG3jgx84C",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1031,7 +1031,7 @@
         ],
         [
           {
-            "node": "Send sticker error",
+            "node": "Send error sticker",
             "type": "main",
             "index": 0
           }
@@ -1125,17 +1125,6 @@
         ]
       ]
     },
-    "Ollama Chat Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Full Generator",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Prepare for Full Generator": {
       "main": [
         [
@@ -1163,7 +1152,7 @@
         ],
         [
           {
-            "node": "Send sticker error",
+            "node": "Send error sticker",
             "type": "main",
             "index": 0
           }
@@ -1315,17 +1304,6 @@
         ]
       ]
     },
-    "Send sticker error": {
-      "main": [
-        [
-          {
-            "node": "Send error message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Send error message": {
       "main": [
         [
@@ -1341,7 +1319,7 @@
       "main": [
         [
           {
-            "node": "No Operation, do nothing1",
+            "node": "Do nothing",
             "type": "main",
             "index": 0
           }
@@ -1358,6 +1336,28 @@
           }
         ]
       ]
+    },
+    "Ollama": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Full Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send error sticker": {
+      "main": [
+        [
+          {
+            "node": "Send error message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1369,7 +1369,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "1e036c0e-003c-4d38-a042-b4d822940602",
+  "versionId": "c2250f7f-1cdf-49a7-b12d-a886287808b4",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"

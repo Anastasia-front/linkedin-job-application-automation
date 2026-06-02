@@ -24,7 +24,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"TEST_MODE\": \"true\"\n}",
+        "jsonOutput": "{\n  \"TEST_MODE\": \"false\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
@@ -299,7 +299,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a912863d-07d3-4a41-983a-a913f21d8eff",
+  "versionId": "d27638c3-dfb5-4237-90d5-5906d02582b6",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
