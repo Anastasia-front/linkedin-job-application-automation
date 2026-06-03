@@ -61,9 +61,9 @@ See full setup guide → [`docs/setup-guide.md`](docs/setup-guide.md)
 
 ## 📊 Results
 
-- more than 900 jobs scraped
-- almost 100 relevant positions found
-- 50 personalized applications sent
+- more than 2000 jobs scraped
+- more than 200 relevant positions found
+- more than 50 personalized applications sent
 
 ## 💼 How this helps me get a job
 
