@@ -4,10 +4,10 @@
 
 Built with **n8n** + LLMs + Apify + PhantomBuster.
 
-* before refactoring
-![Workflow Screenshot](screenshots/workflow-full.png)
+- before refactoring
+  ![Workflow Screenshot](screenshots/workflows/workflow-full.png)
 
-* after refactoring
+- after refactoring
 
 workflow 'main-workflow'
 ![workflows/main-workflow](screenshots/workflows/main-workflow.png)
@@ -25,8 +25,6 @@ workflow 'error-subworkflow-evaluate-and-save-job'
 ![error-subworkflow-evaluate-and-save-job](screenshots/workflows/error-subworkflow-evaluate-and-save-job.png)
 workflow 'error-subworkflow-fetch-jobs-or-get-from-disk'
 ![workflows/error-subworkflow-fetch-jobs-or-get-from-disk](screenshots/workflows/error-subworkflow-fetch-jobs-or-get-from-disk.png)
-
-
 
 ## ✨ Features
 
@@ -79,13 +77,49 @@ This project showcases:
 
 ## 📸 Screenshots
 
+                            Google sheets
+
 ![google-sheets](screenshots/google-sheets.png)
+
+                            Cover-letter example
+
 ![cover-letter-example](screenshots/cover-letter-example.png)
-![telegram-notification](screenshots/telegram-notification.png)
+
+                            Telegram-apify errors
+
+![telegram-apify-errors](screenshots/telegram/apify-errors.png)
+
+                            Gmail-notification warning
+
 ![gmail-notification-warning](screenshots/gmail-notification-warning.png)
+
+                            Gmail-notification error
+
 ![gmail-notification-error](screenshots/gmail-notification-error.png)
+
+                            Phatombusters dashboard
+
 ![phatombusters-dashboard](screenshots/phatombusters-dashboard.png)
+
+                            Apify dashboard
+
 ![apify-dashboard](screenshots/apify-dashboard.png)
+
+                            Telegram notifications
+
+![telegram-update](screenshots/telegram/update.png)
+
+![telegram-error](screenshots/telegram/error.png)
+
+![telegram-errors](screenshots/telegram/errors.png)
+
+                            Slack notifications
+
+![slack-success](screenshots/slack/success.png)
+
+![slack-update](screenshots/slack/update.png)
+
+![slack-success](screenshots/slack/errors.png)
 
 ## Setup for self-hosted version on AWS
 
