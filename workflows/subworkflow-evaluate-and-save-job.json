@@ -208,7 +208,8 @@
         560
       ],
       "id": "76b63b88-c7a8-4736-80f8-18e4903abe6d",
-      "name": "Extract Job ID"
+      "name": "Extract Job ID",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -612,7 +613,7 @@
       "id": "77c2009f-61d5-4bb1-815e-ff847fe17fb4",
       "name": "Loop Over Items",
       "retryOnFail": true,
-      "onError": "continueErrorOutput"
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -801,7 +802,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -32,
+        1024,
         768
       ],
       "id": "ff34091f-ade4-4f5e-8390-2e43138b072d",
@@ -817,13 +818,13 @@
     {
       "parameters": {
         "chatId": "491664927",
-        "text": "=🚨 n8n Automation Error 🚨\n\n🔁 Loop stop working 🔁\n\nWorkflow: subworkflow-fetch-jobs-or-get-from-disk \n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}  \n\nDetails: \n• Node Name: {{ $execution.error?.node?.name || 'HTTP / Scraper Node' }}   \n🔗 View Execution Details: {{ $execution.resumeUrl || $execution.url }}",
+        "text": "=🚨 n8n Automation Error 🚨\n\n▶️ Extract JobId Failure ◀️\n\nWorkflow: subworkflow-fetch-jobs-or-get-from-disk \n\nTime: {{ $now.format('yyyy-MM-dd HH:mm:ss') }}  \n\nDetails: \n• Node Name: {{ $execution.error?.node?.name || 'HTTP / Scraper Node' }}   \n🔗 View Execution Details: {{ $execution.resumeUrl || $execution.url }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        112,
+        1184,
         768
       ],
       "id": "f22f02aa-8bed-40e0-b393-d7c24f894f40",
@@ -880,7 +881,7 @@
       "typeVersion": 1,
       "position": [
         -592,
-        384
+        368
       ],
       "id": "2e471ca9-b501-4d4e-866e-5cce08da6a02",
       "name": "Split Out"
@@ -974,6 +975,13 @@
           },
           {
             "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send sticker",
             "type": "main",
             "index": 0
           }
@@ -1202,13 +1210,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Send sticker",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Send a text message": {
@@ -1369,7 +1371,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "c2250f7f-1cdf-49a7-b12d-a886287808b4",
+  "versionId": "539f31ba-c61b-4c4c-bf66-07ec2b78e8f1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f0ed5632cfd747e5ebaa6cd1297b4e2f8e672e30440220f92087b7bd2ba0db1"
