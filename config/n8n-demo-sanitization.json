@@ -1,0 +1,14 @@
+{
+  "allowed_values": [],
+  "blocked_domains": [
+    "n8n.ai-automation-platform.com",
+    "ai-automation-platform.com"
+  ],
+  "blocked_email_addresses": [],
+  "blocked_ip_addresses": [],
+  "blocked_patterns": [],
+  "replacement_values": {
+    "ai-automation-platform.com": "demo.ai-automation-platform.invalid",
+    "n8n.ai-automation-platform.com": "demo-n8n.ai-automation-platform.invalid"
+  }
+}
