@@ -8,15 +8,16 @@ Built as a **pet project + portfolio piece** to demonstrate real-world AI automa
 
 # Core Components
 
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Scheduling | n8n Schedule Trigger | Periodic execution |
-| Data Collection | Apify + PhantomBuster | Reliable job scraping with fallback |
-| Preprocessing | Code + If Nodes | Language detection, remote filter, validation |
-| AI Evaluation | LLM | Relevance scoring |
-| Personalization | LLM | Cover letter generation |
-| Storage | Google Sheets | Applications log + deduplication |
-| Notifications | Telegram / Gmail | Real-time alerts |
+| Layer           | Technology            | Responsibility                                |
+| --------------- | --------------------- | --------------------------------------------- |
+| Scheduling      | n8n Schedule Trigger  | Periodic execution                            |
+| Data Collection | Apify + PhantomBuster | Reliable job scraping with fallback           |
+| Preprocessing   | Code + If Nodes       | Language detection, remote filter, validation |
+| AI Evaluation   | LLM                   | Relevance scoring                             |
+| Personalization | LLM                   | Cover letter generation                       |
+| Storage         | Google Sheets         | Applications log + deduplication              |
+| Notifications   | Telegram / Gmail      | Real-time alerts                              |
+
 ---
 
 # Key Features & Design Decisions

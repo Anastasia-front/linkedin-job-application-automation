@@ -11,37 +11,29 @@
 
 ## Installation Steps
 
-1. **Clone the repository**
+1.  **Clone the repository**
 
-
-
-2. **Import the Workflow**
-
+2.  **Import the Workflow**
     - Open n8n
     - Go to `Workflows → Import from File`
     - Select `workflow.json`
 
-
-3. **Configure Credentials**
-
+3.  **Configure Credentials**
     - Apify API
     - PhantomBuster
     - LLM Provider (OpenRouter / Gemini / Groq / Ollama / other)
     - Gmail / Google Sheets (OAuth2 or Service Account)
     - Telegram Bot
 
-4. **Google Sheets Setup**
-
+4.  **Google Sheets Setup**
     - Create a new spreadsheet
     - Share it with your Service Account (`Editor` access)
     - Copy the Spreadsheet ID
 
-5. **Telegram Bot Setup**
-
+5.  **Telegram Bot Setup**
     - Message `@BotFather`
     - Create a bot and get the token
     - Get your personal chat ID
-
 
             How to Get Your Telegram Chat ID
 
@@ -69,13 +61,12 @@
             Personal chats usually have a positive ID
             Group chats usually have a negative ID
 
-6. **Activate the Workflow**
-
-    -  Enable the `Schedule Trigger`
-    -  Recommended interval: every 3 hours
+6.  **Activate the Workflow**
+    - Enable the `Schedule Trigger`
+    - Recommended interval: every 3 hours
     - Test manually first
 
-##  **Troubleshooting**
+## **Troubleshooting**
 
 - Apify Forbidden → Check API token or switch to PhantomBuster
 - LLM errors → Reduce maxTokens or change model
