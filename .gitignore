@@ -1,15 +1,55 @@
-# n8n
-*.log
-.DS_Store
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.pytype/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDEs and editors
+.tmp/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
 .env
-credentials/
-node_modules/
+.env.*
+!.env.example
 
-# Sensitive data
-workflow-*.json.bak
-*.key
-*.pem
+# Logs and databases
+*.log
+*.sqlite3
+*.db
 
-# Temporary
-temp/
-cache/
+# OS files
+.DS_Store
+Thumbs.db
+
+# project files
+uploads
+staticfiles/
+
+# Terraform state
+.terraform
+*.tfstate
+*.tfstate.*
+
+# Terraform variables
+terraform.tfvars
+*.tfvars
+
+# crash logs
+crash.log
