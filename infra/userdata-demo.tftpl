@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y ca-certificates curl gnupg jq nginx unzip postgresql-client logrotate
+
+install -m 0755 -d /etc/apt/keyrings
+if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+fi
+
+if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
+  . /etc/os-release
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+fi
+
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+systemctl enable --now docker
+systemctl enable nginx
+usermod -aG docker ubuntu || true
+
+timedatectl set-timezone "${reset_timezone}" || true
+
+# --- Demo deployment directory skeleton -------------------------------------
+# docker-compose.yml, .env.demo, imports/, and the scripts/ contents themselves
+# are delivered later by deploy/scripts/deploy-n8n-demo.sh over SSM (same
+# pattern the production deploy script uses for its nginx config/.env), never
+# baked into the AMI or this cloud-init script.
+install -d -m 0755 -o root -g root /opt/n8n-demo
+install -d -m 0755 -o root -g root /opt/n8n-demo/imports
+install -d -m 0700 -o root -g root /opt/n8n-demo/seed
+install -d -m 1777 -o root -g root /opt/n8n-demo/tmp
+install -d -m 0750 -o root -g root /opt/n8n-demo/scripts
+
+# --- Log rotation ------------------------------------------------------------
+cat > /etc/logrotate.d/n8n-demo <<'EOF'
+/var/log/n8n-demo-reset.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+/var/log/nginx/n8n-demo-access.log /var/log/nginx/n8n-demo-error.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        systemctl reload nginx >/dev/null 2>&1 || true
+    endscript
+}
+EOF
+chmod 0644 /etc/logrotate.d/n8n-demo
+
+touch /var/log/n8n-demo-reset.log
+chown root:root /var/log/n8n-demo-reset.log
+chmod 0640 /var/log/n8n-demo-reset.log
+
+# --- Daily reset: systemd service + timer ------------------------------------
+# reset-n8n-demo.sh itself is delivered by deploy-n8n-demo.sh; the unit is
+# created here so it is present (and the timer scheduled) from first boot.
+# The service will simply fail-and-log until the script is deployed.
+cat > /etc/systemd/system/n8n-demo-reset.service <<'EOF'
+[Unit]
+Description=Reset the public n8n demo environment to its clean seed
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/reset-n8n-demo.sh
+TimeoutStartSec=600
+User=root
+Group=root
+EOF
+chmod 0644 /etc/systemd/system/n8n-demo-reset.service
+
+cat > /etc/systemd/system/n8n-demo-reset.timer <<EOF
+[Unit]
+Description=Daily schedule for the n8n demo reset
+
+[Timer]
+OnCalendar=*-*-* ${format("%02d", reset_hour)}:00:00 ${reset_timezone}
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target
+EOF
+chmod 0644 /etc/systemd/system/n8n-demo-reset.timer
+
+systemctl daemon-reload
+systemctl enable --now n8n-demo-reset.timer

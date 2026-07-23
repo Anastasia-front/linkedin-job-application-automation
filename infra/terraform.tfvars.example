@@ -1,0 +1,85 @@
+aws_region      = "eu-central-1"
+project_name    = "linkedin-job-application-automation"
+environment     = "prod"
+public_hostname = "n8n.ai-automation-platform.com"
+
+key_name      = "ai-platform-key"
+instance_type = "t3.small"
+
+ssh_allowed_cidrs = [
+  "203.0.113.10/32",
+]
+
+# Leave null to use the default VPC/subnet, or provide both for a specific VPC placement.
+vpc_id    = null
+subnet_id = null
+ec2_ami   = null
+
+nginx_origin_certificate = "supply-real-cloudflare-origin-certificate-pem-securely"
+nginx_origin_certificate_version = 1
+
+nginx_origin_private_key = "supply-real-cloudflare-origin-private-key-pem-securely"
+nginx_origin_private_key_version = 1
+
+env_values = {
+  TZ                                  = "Europe/Oslo"
+  GENERIC_TIMEZONE                    = "Europe/Oslo"
+  N8N_ENCRYPTION_KEY                  = "replace-with-one-stable-openssl-rand-hex-32-value"
+  N8N_USER_MANAGEMENT_DISABLED        = "false"
+  N8N_DIAGNOSTICS_ENABLED             = "false"
+  N8N_PERSONALIZATION_ENABLED         = "false"
+  N8N_RUNNERS_ENABLED                 = "true"
+  N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = "true"
+}
+
+# ---------------------------------------------------------------------------
+# Demo environment (public, editable, daily-reset n8n instance).
+# Leave n8n_demo_enabled = false until the demo secrets below are ready.
+# ---------------------------------------------------------------------------
+
+n8n_demo_enabled        = false
+n8n_demo_instance_type  = "t3.small"
+n8n_demo_domain         = "demo-n8n.ai-automation-platform.com"
+n8n_demo_volume_size    = 20
+n8n_demo_reset_hour     = 4
+n8n_demo_reset_timezone = "Europe/Paris"
+
+# Leave empty to rely on SSM Session Manager only (recommended).
+n8n_demo_allowed_admin_cidrs = []
+
+n8n_demo_key_name  = null
+n8n_demo_ami       = null
+n8n_demo_subnet_id = null
+
+# Demo-only secrets. MUST be different values from env_values above and must
+# never be copied from the production instance.
+n8n_demo_env_values = {
+  TZ                                     = "Europe/Paris"
+  GENERIC_TIMEZONE                       = "Europe/Paris"
+  N8N_ENCRYPTION_KEY                     = "replace-with-a-DIFFERENT-openssl-rand-hex-32-value"
+  DB_TYPE                                = "postgresdb"
+  DB_POSTGRESDB_HOST                     = "postgres"
+  DB_POSTGRESDB_PORT                     = "5432"
+  DB_POSTGRESDB_DATABASE                 = "n8n"
+  DB_POSTGRESDB_USER                     = "n8n"
+  DB_POSTGRESDB_PASSWORD                 = "replace-with-a-random-demo-only-password"
+  DEMO_USER_EMAIL                        = "demo@ai-automation-platform.com"
+  DEMO_USER_PASSWORD                     = "replace-with-a-random-demo-only-password"
+  N8N_USER_MANAGEMENT_DISABLED           = "false"
+  N8N_DIAGNOSTICS_ENABLED                = "false"
+  N8N_PERSONALIZATION_ENABLED            = "false"
+  N8N_RUNNERS_ENABLED                    = "true"
+  N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS  = "true"
+  N8N_COMMUNITY_PACKAGES_ENABLED         = "false"
+  N8N_BLOCK_ENV_ACCESS_IN_NODE           = "true"
+  N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES     = "true"
+  N8N_RESTRICT_FILE_ACCESS_TO            = "/tmp/n8n-demo-files"
+  EXECUTIONS_DATA_PRUNE                  = "true"
+  EXECUTIONS_DATA_MAX_AGE                = "24"
+}
+
+n8n_demo_nginx_origin_certificate         = "supply-real-cloudflare-origin-certificate-pem-for-demo-hostname-securely"
+n8n_demo_nginx_origin_certificate_version = 1
+
+n8n_demo_nginx_origin_private_key         = "supply-real-cloudflare-origin-private-key-pem-for-demo-hostname-securely"
+n8n_demo_nginx_origin_private_key_version = 1
