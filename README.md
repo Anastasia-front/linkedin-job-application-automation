@@ -121,7 +121,20 @@ This project showcases:
 
 ![slack-success](screenshots/slack/errors.png)
 
-## Setup for self-hosted version on AWS
+## Production self-hosting on AWS
+
+Production AWS infrastructure and deployment support lives in:
+
+- [`infra/`](infra/)
+- [`deploy/nginx/linkedin-job-application-automation.conf`](deploy/nginx/linkedin-job-application-automation.conf)
+- [`deploy/scripts/deploy-n8n.sh`](deploy/scripts/deploy-n8n.sh)
+- [AWS production deployment guide](docs/aws-production-deployment.md)
+
+The production setup uses Cloudflare proxied DNS, an EC2 Elastic IP, Nginx on ports 80/443, and n8n bound only to `127.0.0.1:5678`. Do not expose port `5678` publicly in production.
+
+A separate, fully isolated public demo instance (`demo-n8n.ai-automation-platform.com`) lets recruiters log in with a shared account and try the workflows; it resets to a clean, sanitized state every day. See [docs/demo-environment.md](docs/demo-environment.md) for the architecture, isolation guarantees, and operational runbook.
+
+## Legacy self-hosted notes
 
 1. CLEAN PROJECT STRUCTURE
 
@@ -143,7 +156,7 @@ image: docker.n8n.io/n8nio/n8n:latest
 restart: unless-stopped
 
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
 
     environment:
       - TZ=Europe/Oslo
@@ -202,7 +215,7 @@ Expected: HTML response (n8n UI)
 
 6. OPEN IN BROWSER
 
-http://EC2_PUBLIC_DNS:5678
+For production, do not browse directly to port `5678`; use the Nginx and Cloudflare hostname documented above.
 
 7. ADD CONNECTION
 
