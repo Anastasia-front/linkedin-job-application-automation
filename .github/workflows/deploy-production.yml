@@ -1,0 +1,157 @@
+name: Deploy n8n Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      n8n_image:
+        description: "Pinned n8n image to deploy to production"
+        required: true
+        default: "docker.n8n.io/n8nio/n8n:1.102.4"
+      previous_image:
+        description: "Optional previous image fallback if no running production container exists"
+        required: false
+        default: ""
+
+concurrency:
+  group: n8n-production-deployment
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  INSTANCE_ID: ${{ vars.N8N_INSTANCE_ID }}
+  PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
+  # push events have no workflow_dispatch inputs, so fall back to the pinned default.
+  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
+  N8N_IMAGE_PREVIOUS: ${{ github.event.inputs.previous_image || '' }}
+
+jobs:
+  # ---------------------------------------------------------------------
+  # 1. Validate. Static checks only, no AWS calls.
+  # ---------------------------------------------------------------------
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required configuration
+        run: |
+          set -Eeuo pipefail
+          test -n "$AWS_REGION"
+          test -n "$INSTANCE_ID"
+          test -n "$N8N_IMAGE"
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
+      - name: Validate shell scripts
+        run: |
+          set -Eeuo pipefail
+          for f in deploy/scripts/*.sh scripts/n8n/*.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck deploy/scripts/*.sh scripts/n8n/*.sh
+          fi
+
+      - name: Validate production compose file
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          docker compose config >/dev/null
+          rm -f .env
+
+      - name: Run sanitizer/validator unit tests
+        run: |
+          set -Eeuo pipefail
+          pip install --quiet pytest
+          python3 -m pytest tests/n8n -q
+
+  # ---------------------------------------------------------------------
+  # 2. Deploy production (unchanged blue/green behavior, via SSM).
+  # ---------------------------------------------------------------------
+  deploy-production:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to production EC2 via SSM
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+
+          NGINX_CONF_BASE64="$(base64 -w0 deploy/nginx/linkedin-job-application-automation.conf)"
+          DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n.sh)"
+
+          cat > /tmp/prod-remote.sh <<'REMOTE'
+          mkdir -p /home/ubuntu/linkedin-job-application-automation-deploy
+          echo "$DEPLOY_SCRIPT_BASE64" | base64 -d > /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          chmod 0700 /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          REMOTE
+
+          cat > /tmp/prod-env.txt <<EOF
+          AWS_REGION="${AWS_REGION}"
+          N8N_IMAGE="${N8N_IMAGE}"
+          N8N_IMAGE_PREVIOUS="${N8N_IMAGE_PREVIOUS}"
+          NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
+          DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
+          EOF
+
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/prod-remote.sh /tmp/prod-stdout.txt /tmp/prod-env.txt
+          cat /tmp/prod-stdout.txt
+          rm -f /tmp/prod-remote.sh /tmp/prod-env.txt /tmp/prod-stdout.txt
+
+  # ---------------------------------------------------------------------
+  # 3. Verify production health immediately after deploy (via SSM, hitting
+  #    Nginx on localhost — avoids needing a Cloudflare Access bypass for CI).
+  # ---------------------------------------------------------------------
+  verify-production:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify production health
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/verify-prod.sh <<'REMOTE'
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:5678/health
+          echo
+          curl -k --fail --silent --show-error --max-time 10 --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health"
+          REMOTE
+          cat > /tmp/verify-prod-env.txt <<EOF
+          PROD_DOMAIN="${PROD_DOMAIN}"
+          EOF
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/verify-prod.sh /tmp/verify-prod-stdout.txt /tmp/verify-prod-env.txt
+          cat /tmp/verify-prod-stdout.txt
+
+  # ---------------------------------------------------------------------
+  # 4. Deployment summary.
+  # ---------------------------------------------------------------------
+  deployment-summary:
+    needs: verify-production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Production deployment summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit SHA: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Result: success" >> "$GITHUB_STEP_SUMMARY"

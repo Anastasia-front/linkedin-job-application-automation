@@ -1,23 +1,18 @@
-name: Deploy n8n
+name: Refresh n8n Demo
 
 on:
+  schedule:
+    # 0 2 * * * = 02:00 UTC every day (GitHub cron schedules always run in UTC).
+    - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
       n8n_image:
-        description: "Pinned n8n image to deploy to production"
+        description: "Pinned n8n image to deploy to demo"
         required: true
         default: "docker.n8n.io/n8nio/n8n:1.102.4"
-      previous_image:
-        description: "Optional previous image fallback if no running production container exists"
-        required: false
-        default: ""
-      deploy_demo:
-        description: "Also refresh the public demo instance (export/sanitize/validate/import/reset)"
-        required: true
-        default: "true"
 
 concurrency:
-  group: n8n-deployment
+  group: n8n-demo-refresh
   cancel-in-progress: false
 
 env:
@@ -26,8 +21,8 @@ env:
   DEMO_INSTANCE_ID: ${{ vars.N8N_DEMO_INSTANCE_ID }}
   PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
   DEMO_DOMAIN: ${{ vars.N8N_DEMO_DOMAIN }}
-  N8N_IMAGE: ${{ inputs.n8n_image }}
-  N8N_IMAGE_PREVIOUS: ${{ inputs.previous_image }}
+  # scheduled runs have no workflow_dispatch inputs, so fall back to the pinned default.
+  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
 
 jobs:
   # ---------------------------------------------------------------------
@@ -43,6 +38,7 @@ jobs:
           set -Eeuo pipefail
           test -n "$AWS_REGION"
           test -n "$INSTANCE_ID"
+          test -n "$DEMO_INSTANCE_ID"
           test -n "$N8N_IMAGE"
           test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
           test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
@@ -79,53 +75,10 @@ jobs:
           python3 -m pytest tests/n8n -q
 
   # ---------------------------------------------------------------------
-  # 2. Deploy production (unchanged blue/green behavior, via SSM).
+  # 2. Verify production is healthy before exporting workflows from it.
   # ---------------------------------------------------------------------
-  deploy-production:
+  verify-production-source:
     needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Deploy to production EC2 via SSM
-        run: |
-          set -Eeuo pipefail
-          chmod +x deploy/scripts/ssm-run.sh
-
-          NGINX_CONF_BASE64="$(base64 -w0 deploy/nginx/linkedin-job-application-automation.conf)"
-          DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n.sh)"
-
-          cat > /tmp/prod-remote.sh <<'REMOTE'
-          mkdir -p /home/ubuntu/linkedin-job-application-automation-deploy
-          echo "$DEPLOY_SCRIPT_BASE64" | base64 -d > /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
-          chmod 0700 /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
-          /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
-          REMOTE
-
-          cat > /tmp/prod-env.txt <<EOF
-          AWS_REGION="${AWS_REGION}"
-          N8N_IMAGE="${N8N_IMAGE}"
-          N8N_IMAGE_PREVIOUS="${N8N_IMAGE_PREVIOUS}"
-          NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
-          DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
-          EOF
-
-          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/prod-remote.sh /tmp/prod-stdout.txt /tmp/prod-env.txt
-          cat /tmp/prod-stdout.txt
-          rm -f /tmp/prod-remote.sh /tmp/prod-env.txt /tmp/prod-stdout.txt
-
-  # ---------------------------------------------------------------------
-  # 3. Verify production health immediately after deploy (via SSM, hitting
-  #    Nginx on localhost — avoids needing a Cloudflare Access bypass for CI).
-  # ---------------------------------------------------------------------
-  verify-production:
-    needs: deploy-production
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -150,15 +103,14 @@ jobs:
           cat /tmp/verify-prod-stdout.txt
 
   # ---------------------------------------------------------------------
-  # 4. Export production workflows (CLI only, no credentials/DB), sanitize,
+  # 3. Export production workflows (CLI only, no credentials/DB), sanitize,
   #    and validate — all in ONE job so the raw production export never
   #    leaves this job's runner workspace or crosses an artifact boundary.
   #    Only the already-sanitized, already-validated output is uploaded as a
   #    short-retention (1 day) artifact for the deploy-demo job.
   # ---------------------------------------------------------------------
   sanitize-and-validate-workflows:
-    needs: verify-production
-    if: ${{ inputs.deploy_demo == 'true' }}
+    needs: verify-production-source
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -231,11 +183,10 @@ jobs:
         run: rm -rf /tmp/raw-export /tmp/sanitized /tmp/sanitized-workflows.tar
 
   # ---------------------------------------------------------------------
-  # 5. Deploy the demo stack (infra/nginx/compose + sanitized workflows).
+  # 4. Deploy the demo stack (infra/nginx/compose + sanitized workflows).
   # ---------------------------------------------------------------------
   deploy-demo:
     needs: sanitize-and-validate-workflows
-    if: ${{ inputs.deploy_demo == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -285,12 +236,11 @@ jobs:
           rm -f /tmp/demo-remote.sh /tmp/demo-env.txt /tmp/demo-stdout.txt /tmp/artifact/sanitized-workflows.tar
 
   # ---------------------------------------------------------------------
-  # 6. Build the clean demo seed and immediately reset from it, proving the
+  # 5. Build the clean demo seed and immediately reset from it, proving the
   #    restore path works before recruiters ever see the instance.
   # ---------------------------------------------------------------------
   build-demo-seed:
     needs: deploy-demo
-    if: ${{ inputs.deploy_demo == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -319,12 +269,11 @@ jobs:
           rm -f /tmp/build-seed.sh /tmp/build-seed-env.txt /tmp/build-seed-stdout.txt
 
   # ---------------------------------------------------------------------
-  # 7. Verify demo externally (public hostname, no Cloudflare Access in front
-  #    of it) and verify production is still healthy.
+  # 6. Verify demo externally (public hostname, no Cloudflare Access in front
+  #    of it).
   # ---------------------------------------------------------------------
   verify-demo:
     needs: build-demo-seed
-    if: ${{ inputs.deploy_demo == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify demo health and info endpoint
@@ -334,9 +283,13 @@ jobs:
           echo
           curl --fail --silent --show-error --max-time 15 "https://${DEMO_DOMAIN}/demo-info"
 
+  # ---------------------------------------------------------------------
+  # 7. Verify production is still healthy after the demo refresh. Only runs
+  #    when the initial production-source verification succeeded.
+  # ---------------------------------------------------------------------
   verify-production-final:
-    needs: [verify-production, build-demo-seed]
-    if: ${{ always() && needs.verify-production.result == 'success' }}
+    needs: [verify-production-source, build-demo-seed]
+    if: ${{ always() && needs.verify-production-source.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -355,10 +308,22 @@ jobs:
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/verify-prod-final.sh /tmp/verify-prod-final-stdout.txt
           cat /tmp/verify-prod-final-stdout.txt
 
-      - name: Deployment summary
+  # ---------------------------------------------------------------------
+  # 8. Refresh summary.
+  # ---------------------------------------------------------------------
+  refresh-summary:
+    needs: [verify-demo, verify-production-final]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh summary
         run: |
-          echo "## Deployment summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Demo pipeline run: ${{ inputs.deploy_demo }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Demo refresh summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Demo image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production source host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Demo host: ${DEMO_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit SHA: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Export/sanitize/validate: ${{ needs.verify-production-final.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Demo verification: ${{ needs.verify-demo.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production final verification: ${{ needs.verify-production-final.result }}" >> "$GITHUB_STEP_SUMMARY"
