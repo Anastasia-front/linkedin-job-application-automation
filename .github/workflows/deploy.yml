@@ -1,0 +1,364 @@
+name: Deploy n8n
+
+on:
+  workflow_dispatch:
+    inputs:
+      n8n_image:
+        description: "Pinned n8n image to deploy to production"
+        required: true
+        default: "docker.n8n.io/n8nio/n8n:1.102.4"
+      previous_image:
+        description: "Optional previous image fallback if no running production container exists"
+        required: false
+        default: ""
+      deploy_demo:
+        description: "Also refresh the public demo instance (export/sanitize/validate/import/reset)"
+        required: true
+        default: "true"
+
+concurrency:
+  group: n8n-deployment
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  INSTANCE_ID: ${{ vars.N8N_INSTANCE_ID }}
+  DEMO_INSTANCE_ID: ${{ vars.N8N_DEMO_INSTANCE_ID }}
+  PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
+  DEMO_DOMAIN: ${{ vars.N8N_DEMO_DOMAIN }}
+  N8N_IMAGE: ${{ inputs.n8n_image }}
+  N8N_IMAGE_PREVIOUS: ${{ inputs.previous_image }}
+
+jobs:
+  # ---------------------------------------------------------------------
+  # 1. Validate. Static checks only, no AWS calls.
+  # ---------------------------------------------------------------------
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required configuration
+        run: |
+          set -Eeuo pipefail
+          test -n "$AWS_REGION"
+          test -n "$INSTANCE_ID"
+          test -n "$N8N_IMAGE"
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+
+      - name: Validate shell scripts
+        run: |
+          set -Eeuo pipefail
+          for f in deploy/scripts/*.sh scripts/n8n/*.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck deploy/scripts/*.sh scripts/n8n/*.sh
+          fi
+
+      - name: Validate production compose file
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          docker compose config >/dev/null
+          rm -f .env
+
+      - name: Validate demo compose file
+        run: |
+          set -Eeuo pipefail
+          cp .env.demo.example .env.demo
+          docker compose -f docker-compose.demo.yml --env-file .env.demo config >/dev/null
+          rm -f .env.demo
+
+      - name: Run sanitizer/validator unit tests
+        run: |
+          set -Eeuo pipefail
+          pip install --quiet pytest
+          python3 -m pytest tests/n8n -q
+
+  # ---------------------------------------------------------------------
+  # 2. Deploy production (unchanged blue/green behavior, via SSM).
+  # ---------------------------------------------------------------------
+  deploy-production:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to production EC2 via SSM
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+
+          NGINX_CONF_BASE64="$(base64 -w0 deploy/nginx/linkedin-job-application-automation.conf)"
+          DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n.sh)"
+
+          cat > /tmp/prod-remote.sh <<'REMOTE'
+          mkdir -p /home/ubuntu/linkedin-job-application-automation-deploy
+          echo "$DEPLOY_SCRIPT_BASE64" | base64 -d > /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          chmod 0700 /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          /home/ubuntu/linkedin-job-application-automation-deploy/deploy-n8n.sh
+          REMOTE
+
+          cat > /tmp/prod-env.txt <<EOF
+          AWS_REGION="${AWS_REGION}"
+          N8N_IMAGE="${N8N_IMAGE}"
+          N8N_IMAGE_PREVIOUS="${N8N_IMAGE_PREVIOUS}"
+          NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
+          DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
+          EOF
+
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/prod-remote.sh /tmp/prod-stdout.txt /tmp/prod-env.txt
+          cat /tmp/prod-stdout.txt
+          rm -f /tmp/prod-remote.sh /tmp/prod-env.txt /tmp/prod-stdout.txt
+
+  # ---------------------------------------------------------------------
+  # 3. Verify production health immediately after deploy (via SSM, hitting
+  #    Nginx on localhost — avoids needing a Cloudflare Access bypass for CI).
+  # ---------------------------------------------------------------------
+  verify-production:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Verify production health
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/verify-prod.sh <<'REMOTE'
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:5678/health
+          echo
+          curl -k --fail --silent --show-error --max-time 10 --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health"
+          REMOTE
+          cat > /tmp/verify-prod-env.txt <<EOF
+          PROD_DOMAIN="${PROD_DOMAIN}"
+          EOF
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/verify-prod.sh /tmp/verify-prod-stdout.txt /tmp/verify-prod-env.txt
+          cat /tmp/verify-prod-stdout.txt
+
+  # ---------------------------------------------------------------------
+  # 4. Export production workflows (CLI only, no credentials/DB), sanitize,
+  #    and validate — all in ONE job so the raw production export never
+  #    leaves this job's runner workspace or crosses an artifact boundary.
+  #    Only the already-sanitized, already-validated output is uploaded as a
+  #    short-retention (1 day) artifact for the deploy-demo job.
+  # ---------------------------------------------------------------------
+  sanitize-and-validate-workflows:
+    needs: verify-production
+    if: ${{ inputs.deploy_demo == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Export workflows from production (CLI export only, no credentials/DB)
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/export.sh <<'REMOTE'
+          CONTAINER=linkedin-job-application-automation-n8n
+          EXPORT_DIR=/home/node/.n8n-files/ci-export
+          docker exec "$CONTAINER" rm -rf "$EXPORT_DIR"
+          docker exec "$CONTAINER" mkdir -p "$EXPORT_DIR"
+          docker exec "$CONTAINER" n8n export:workflow --help > /tmp/export-help.txt 2>&1 || true
+          if ! grep -q -- '--separate' /tmp/export-help.txt || ! grep -q -- '--output' /tmp/export-help.txt; then
+            echo "n8n export:workflow --help does not advertise --separate/--output on this pinned image" >&2
+            exit 1
+          fi
+          docker exec "$CONTAINER" n8n export:workflow --all --separate --output="$EXPORT_DIR"
+          docker exec "$CONTAINER" tar -C "$EXPORT_DIR" -cf - . | base64 -w 0
+          docker exec "$CONTAINER" rm -rf "$EXPORT_DIR"
+          REMOTE
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/export.sh /tmp/export-blob-b64.txt
+          mkdir -p /tmp/raw-export
+          base64 -d /tmp/export-blob-b64.txt | tar -x -C /tmp/raw-export
+          rm -f /tmp/export-blob-b64.txt /tmp/export.sh
+          echo "Exported $(find /tmp/raw-export -name '*.json' | wc -l) workflow file(s) (contents not printed)."
+
+      - name: Sanitize exported workflows
+        run: |
+          set -Eeuo pipefail
+          mkdir -p /tmp/sanitized
+          python3 scripts/n8n/sanitize_workflows.py \
+            --input /tmp/raw-export \
+            --output /tmp/sanitized \
+            --config config/n8n-demo-sanitization.json \
+            --summary-out /tmp/sanitize-summary.json
+          cat /tmp/sanitize-summary.json
+
+      - name: Validate sanitized workflows (independent second gate)
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/n8n/validate_demo_workflows.py \
+            --input /tmp/sanitized \
+            --config config/n8n-demo-sanitization.json \
+            --report-out /tmp/validate-report.json
+          cat /tmp/validate-report.json
+
+      - name: Package sanitized workflows for the demo deploy job
+        run: |
+          set -Eeuo pipefail
+          tar -C /tmp/sanitized -cf /tmp/sanitized-workflows.tar .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sanitized-workflows
+          path: /tmp/sanitized-workflows.tar
+          retention-days: 1
+
+      - name: Shred transient raw export from the runner
+        if: always()
+        run: rm -rf /tmp/raw-export /tmp/sanitized /tmp/sanitized-workflows.tar
+
+  # ---------------------------------------------------------------------
+  # 5. Deploy the demo stack (infra/nginx/compose + sanitized workflows).
+  # ---------------------------------------------------------------------
+  deploy-demo:
+    needs: sanitize-and-validate-workflows
+    if: ${{ inputs.deploy_demo == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: sanitized-workflows
+          path: /tmp/artifact
+
+      - name: Deploy demo stack via SSM
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEMO_INSTANCE_ID"
+          chmod +x deploy/scripts/ssm-run.sh
+
+          NGINX_CONF_BASE64="$(base64 -w0 deploy/nginx/n8n-demo.conf)"
+          COMPOSE_FILE_BASE64="$(base64 -w0 docker-compose.demo.yml)"
+          BUILD_SEED_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/build_demo_seed.sh)"
+          RESET_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/reset_demo.sh)"
+          WORKFLOWS_TAR_BASE64="$(base64 -w0 /tmp/artifact/sanitized-workflows.tar)"
+          DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n-demo.sh)"
+
+          cat > /tmp/demo-remote.sh <<'REMOTE'
+          mkdir -p /home/ubuntu/linkedin-job-application-automation-demo-deploy
+          echo "$DEPLOY_SCRIPT_BASE64" | base64 -d > /home/ubuntu/linkedin-job-application-automation-demo-deploy/deploy-n8n-demo.sh
+          chmod 0700 /home/ubuntu/linkedin-job-application-automation-demo-deploy/deploy-n8n-demo.sh
+          /home/ubuntu/linkedin-job-application-automation-demo-deploy/deploy-n8n-demo.sh
+          REMOTE
+
+          cat > /tmp/demo-env.txt <<EOF
+          AWS_REGION="${AWS_REGION}"
+          N8N_IMAGE="${N8N_IMAGE}"
+          NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
+          COMPOSE_FILE_BASE64="${COMPOSE_FILE_BASE64}"
+          BUILD_SEED_SCRIPT_BASE64="${BUILD_SEED_SCRIPT_BASE64}"
+          RESET_SCRIPT_BASE64="${RESET_SCRIPT_BASE64}"
+          WORKFLOWS_TAR_BASE64="${WORKFLOWS_TAR_BASE64}"
+          DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
+          EOF
+
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/demo-remote.sh /tmp/demo-stdout.txt /tmp/demo-env.txt
+          cat /tmp/demo-stdout.txt
+          rm -f /tmp/demo-remote.sh /tmp/demo-env.txt /tmp/demo-stdout.txt /tmp/artifact/sanitized-workflows.tar
+
+  # ---------------------------------------------------------------------
+  # 6. Build the clean demo seed and immediately reset from it, proving the
+  #    restore path works before recruiters ever see the instance.
+  # ---------------------------------------------------------------------
+  build-demo-seed:
+    needs: deploy-demo
+    if: ${{ inputs.deploy_demo == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build demo seed and run an immediate reset
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/build-seed.sh <<'REMOTE'
+          /opt/n8n-demo/scripts/build_demo_seed.sh
+          /usr/local/sbin/reset-n8n-demo.sh
+          tail -n 40 /var/log/n8n-demo-reset.log
+          cat /opt/n8n-demo/seed/metadata.json
+          REMOTE
+          cat > /tmp/build-seed-env.txt <<EOF
+          GIT_COMMIT="${GITHUB_SHA}"
+          N8N_IMAGE_TAG="${N8N_IMAGE}"
+          EOF
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/build-seed.sh /tmp/build-seed-stdout.txt /tmp/build-seed-env.txt
+          cat /tmp/build-seed-stdout.txt
+          rm -f /tmp/build-seed.sh /tmp/build-seed-env.txt /tmp/build-seed-stdout.txt
+
+  # ---------------------------------------------------------------------
+  # 7. Verify demo externally (public hostname, no Cloudflare Access in front
+  #    of it) and verify production is still healthy.
+  # ---------------------------------------------------------------------
+  verify-demo:
+    needs: build-demo-seed
+    if: ${{ inputs.deploy_demo == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify demo health and info endpoint
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --max-time 15 "https://${DEMO_DOMAIN}/health"
+          echo
+          curl --fail --silent --show-error --max-time 15 "https://${DEMO_DOMAIN}/demo-info"
+
+  verify-production-final:
+    needs: [verify-production, build-demo-seed]
+    if: ${{ always() && needs.verify-production.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Re-verify production health after the demo pipeline ran
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/verify-prod-final.sh <<'REMOTE'
+          curl --fail --silent --show-error --max-time 10 http://127.0.0.1:5678/health
+          REMOTE
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/verify-prod-final.sh /tmp/verify-prod-final-stdout.txt
+          cat /tmp/verify-prod-final-stdout.txt
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Demo pipeline run: ${{ inputs.deploy_demo }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Demo host: ${DEMO_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
