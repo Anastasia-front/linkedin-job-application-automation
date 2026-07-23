@@ -1,0 +1,90 @@
+# Public demo n8n stack. Completely separate from docker-compose.yml (production):
+# separate Compose project name, network, named volumes, and env file.
+#
+# Always invoke with an explicit env file so Compose-level ${VAR} substitution
+# below (used to map DB_POSTGRESDB_* into the postgres image's POSTGRES_*
+# variables) resolves correctly, e.g.:
+#   docker compose -p n8n-demo --env-file .env.demo -f docker-compose.demo.yml <cmd>
+name: n8n-demo
+
+networks:
+  n8n_demo_net:
+    name: n8n-demo-net
+
+volumes:
+  n8n_demo_data:
+    name: n8n-demo-data
+  n8n_demo_postgres_data:
+    name: n8n-demo-postgres-data
+
+services:
+  postgres:
+    image: postgres:16.6
+    container_name: n8n-demo-postgres
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - n8n_demo_net
+    environment:
+      POSTGRES_USER: ${DB_POSTGRESDB_USER}
+      POSTGRES_PASSWORD: ${DB_POSTGRESDB_PASSWORD}
+      POSTGRES_DB: ${DB_POSTGRESDB_DATABASE}
+    volumes:
+      - n8n_demo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:1.102.4
+    container_name: n8n-demo
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - n8n_demo_net
+    env_file:
+      - .env.demo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - n8n_demo_data:/home/node/.n8n
+      - ./imports:/imports:ro
+      - ./tmp:/tmp/n8n-demo-files
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:5678/health >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
