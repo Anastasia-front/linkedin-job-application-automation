@@ -69,6 +69,12 @@ jobs:
           pip install --quiet pytest
           python3 -m pytest tests/n8n -q
 
+      - name: Validate the production workflow manifest
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/n8n/validate_workflow_manifest.py \
+            --manifest workflows/manifest.json --workflow-dir workflows
+
   # ---------------------------------------------------------------------
   # 2. Deploy production (unchanged blue/green behavior, via SSM).
   # ---------------------------------------------------------------------
@@ -112,11 +118,76 @@ jobs:
           rm -f /tmp/prod-remote.sh /tmp/prod-env.txt /tmp/prod-stdout.txt
 
   # ---------------------------------------------------------------------
-  # 3. Verify production health immediately after deploy (via SSM, hitting
+  # 3. Seed production workflows from the repository (source of truth) via
+  #    the n8n CLI, idempotently: only the deterministic ids in
+  #    workflows/manifest.json are touched, existing credentials/users/
+  #    executions/non-managed workflows are left untouched, and a post-import
+  #    export verifies every manifest id exists exactly once. No manual n8n
+  #    UI import required.
+  # ---------------------------------------------------------------------
+  seed-production-workflows:
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    outputs:
+      seeded_count: ${{ steps.seed.outputs.seeded_count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Seed production workflows via SSM
+        id: seed
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+
+          WORKFLOWS_TAR_BASE64="$(tar -C workflows -cf - . | base64 -w0)"
+          SEED_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/seed-n8n-workflows.sh)"
+          CONTAINER_NAME="linkedin-job-application-automation-n8n"
+
+          cat > /tmp/seed-prod-remote.sh <<'REMOTE'
+          set -Eeuo pipefail
+          WORKDIR="$(mktemp -d)"
+          trap 'rm -rf "$WORKDIR"' EXIT
+          echo "$WORKFLOWS_TAR_BASE64" | base64 -d | tar -x -C "$WORKDIR"
+          echo "$SEED_SCRIPT_BASE64" | base64 -d > "${WORKDIR}/seed-n8n-workflows.sh"
+          chmod 0700 "${WORKDIR}/seed-n8n-workflows.sh"
+
+          SEED_CONTAINER="$CONTAINER_NAME" \
+          SEED_WORKFLOW_DIR="$WORKDIR" \
+          SEED_MANIFEST="${WORKDIR}/manifest.json" \
+          SEED_ENVIRONMENT="production" \
+            "${WORKDIR}/seed-n8n-workflows.sh"
+          REMOTE
+
+          cat > /tmp/seed-prod-env.txt <<EOF
+          WORKFLOWS_TAR_BASE64="${WORKFLOWS_TAR_BASE64}"
+          SEED_SCRIPT_BASE64="${SEED_SCRIPT_BASE64}"
+          CONTAINER_NAME="${CONTAINER_NAME}"
+          EOF
+
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/seed-prod-remote.sh /tmp/seed-prod-stdout.txt /tmp/seed-prod-env.txt
+          cat /tmp/seed-prod-stdout.txt
+
+          seeded_count="$(grep -o 'SEEDED_WORKFLOW_COUNT=[0-9]*' /tmp/seed-prod-stdout.txt | tail -1 | cut -d= -f2 || true)"
+          echo "seeded_count=${seeded_count:-unknown}" >> "$GITHUB_OUTPUT"
+
+          rm -f /tmp/seed-prod-remote.sh /tmp/seed-prod-env.txt /tmp/seed-prod-stdout.txt
+
+          if [ -z "$seeded_count" ]; then
+            echo "Seeding did not report a workflow count; treating as failure." >&2
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------
+  # 4. Verify production health after deploy + seeding (via SSM, hitting
   #    Nginx on localhost — avoids needing a Cloudflare Access bypass for CI).
   # ---------------------------------------------------------------------
   verify-production:
-    needs: deploy-production
+    needs: seed-production-workflows
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -141,17 +212,39 @@ jobs:
           cat /tmp/verify-prod-stdout.txt
 
   # ---------------------------------------------------------------------
-  # 4. Deployment summary.
+  # 5. Deployment summary.
   # ---------------------------------------------------------------------
   deployment-summary:
-    needs: verify-production
+    needs: [deploy-production, seed-production-workflows, verify-production]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Deployment summary
         run: |
-          echo "## Production deployment summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit SHA: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Result: success" >> "$GITHUB_STEP_SUMMARY"
+          overall="success"
+          for result in \
+            "${{ needs.deploy-production.result }}" \
+            "${{ needs.seed-production-workflows.result }}" \
+            "${{ needs.verify-production.result }}"; do
+            if [ "$result" != "success" ]; then
+              overall="failed"
+            fi
+          done
+
+          {
+            echo "## Production deployment summary"
+            echo "- Overall result: ${overall}"
+            echo "- Production image: ${N8N_IMAGE}"
+            echo "- Production host: ${PROD_DOMAIN}"
+            echo "- Commit SHA: ${GITHUB_SHA}"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Production deployment: ${{ needs.deploy-production.result }}"
+            echo "- Production workflow seed: ${{ needs.seed-production-workflows.result }}"
+            echo "- Production workflow seed count: ${{ needs.seed-production-workflows.outputs.seeded_count }}"
+            echo "- Production health verification: ${{ needs.verify-production.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$overall" != "success" ]; then
+            echo "One or more production deployment stages did not succeed; see fields above." >&2
+            exit 1
+          fi

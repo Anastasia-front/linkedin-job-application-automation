@@ -1,7 +1,5 @@
-import json
 
 from validate_demo_workflows import validate_workflow
-
 
 BASE_CONFIG = {
     "blocked_domains": ["n8n.ai-automation-platform.com"],

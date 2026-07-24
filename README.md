@@ -128,7 +128,8 @@ Production AWS infrastructure and deployment support lives in:
 - [`infra/`](infra/)
 - [`deploy/nginx/linkedin-job-application-automation.conf`](deploy/nginx/linkedin-job-application-automation.conf)
 - [`deploy/scripts/deploy-n8n.sh`](deploy/scripts/deploy-n8n.sh)
-- [AWS production deployment guide](docs/aws-production-deployment.md)
+- [`deploy/scripts/seed-n8n-workflows.sh`](deploy/scripts/seed-n8n-workflows.sh) — idempotent workflow seeding, shared by production and demo
+- [AWS production deployment guide](docs/aws-production-deployment.md) (includes [workflow seeding](docs/aws-production-deployment.md#workflow-seeding))
 
 The production setup uses Cloudflare proxied DNS, an EC2 Elastic IP, Nginx on ports 80/443, and n8n bound only to `127.0.0.1:5678`. Do not expose port `5678` publicly in production.
 

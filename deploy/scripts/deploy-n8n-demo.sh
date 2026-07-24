@@ -179,11 +179,16 @@ install_sanitized_workflows() {
 install_operational_scripts() {
   : "${BUILD_SEED_SCRIPT_BASE64:?BUILD_SEED_SCRIPT_BASE64 is required}"
   : "${RESET_SCRIPT_BASE64:?RESET_SCRIPT_BASE64 is required}"
+  : "${SEED_WORKFLOWS_SCRIPT_BASE64:?SEED_WORKFLOWS_SCRIPT_BASE64 is required}"
 
   sudo install -d -m 0750 -o root -g root "${DEMO_DIR}/scripts"
   echo "$BUILD_SEED_SCRIPT_BASE64" | base64 -d | sudo tee "${DEMO_DIR}/scripts/build_demo_seed.sh" >/dev/null
   sudo chown root:root "${DEMO_DIR}/scripts/build_demo_seed.sh"
   sudo chmod 0750 "${DEMO_DIR}/scripts/build_demo_seed.sh"
+
+  echo "$SEED_WORKFLOWS_SCRIPT_BASE64" | base64 -d | sudo tee "${DEMO_DIR}/scripts/seed-n8n-workflows.sh" >/dev/null
+  sudo chown root:root "${DEMO_DIR}/scripts/seed-n8n-workflows.sh"
+  sudo chmod 0750 "${DEMO_DIR}/scripts/seed-n8n-workflows.sh"
 
   echo "$RESET_SCRIPT_BASE64" | base64 -d | sudo tee /usr/local/sbin/reset-n8n-demo.sh >/dev/null
   sudo chown root:root /usr/local/sbin/reset-n8n-demo.sh

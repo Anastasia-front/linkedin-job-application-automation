@@ -1,8 +1,8 @@
 import json
 
 import pytest
-from sanitize_workflows import Counters, SanitizationError, sanitize_workflow, main as sanitize_main
-
+from sanitize_workflows import Counters, SanitizationError, sanitize_workflow
+from sanitize_workflows import main as sanitize_main
 
 BASE_CONFIG = {
     "blocked_domains": ["n8n.ai-automation-platform.com"],

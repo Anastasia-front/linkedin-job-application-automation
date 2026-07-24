@@ -74,6 +74,12 @@ jobs:
           pip install --quiet pytest
           python3 -m pytest tests/n8n -q
 
+      - name: Validate the production workflow manifest
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/n8n/validate_workflow_manifest.py \
+            --manifest workflows/manifest.json --workflow-dir workflows
+
   # ---------------------------------------------------------------------
   # 2. Verify production is healthy before exporting workflows from it.
   # ---------------------------------------------------------------------
@@ -209,6 +215,7 @@ jobs:
           NGINX_CONF_BASE64="$(base64 -w0 deploy/nginx/n8n-demo.conf)"
           COMPOSE_FILE_BASE64="$(base64 -w0 docker-compose.demo.yml)"
           BUILD_SEED_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/build_demo_seed.sh)"
+          SEED_WORKFLOWS_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/seed-n8n-workflows.sh)"
           RESET_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/reset_demo.sh)"
           WORKFLOWS_TAR_BASE64="$(base64 -w0 /tmp/artifact/sanitized-workflows.tar)"
           DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n-demo.sh)"
@@ -226,6 +233,7 @@ jobs:
           NGINX_CONF_BASE64="${NGINX_CONF_BASE64}"
           COMPOSE_FILE_BASE64="${COMPOSE_FILE_BASE64}"
           BUILD_SEED_SCRIPT_BASE64="${BUILD_SEED_SCRIPT_BASE64}"
+          SEED_WORKFLOWS_SCRIPT_BASE64="${SEED_WORKFLOWS_SCRIPT_BASE64}"
           RESET_SCRIPT_BASE64="${RESET_SCRIPT_BASE64}"
           WORKFLOWS_TAR_BASE64="${WORKFLOWS_TAR_BASE64}"
           DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
@@ -242,6 +250,8 @@ jobs:
   build-demo-seed:
     needs: deploy-demo
     runs-on: ubuntu-latest
+    outputs:
+      seeded_count: ${{ steps.build-seed.outputs.seeded_count }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -251,6 +261,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Build demo seed and run an immediate reset
+        id: build-seed
         run: |
           set -Eeuo pipefail
           chmod +x deploy/scripts/ssm-run.sh
@@ -266,6 +277,13 @@ jobs:
           EOF
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/build-seed.sh /tmp/build-seed-stdout.txt /tmp/build-seed-env.txt
           cat /tmp/build-seed-stdout.txt
+
+          # metadata.json (printed by the REMOTE script above) carries
+          # workflow_count; fall back to "unknown" rather than failing the
+          # job on a parsing hiccup — this is a summary field, not a gate.
+          seeded_count="$(grep -o '"workflow_count": *[0-9]*' /tmp/build-seed-stdout.txt | tail -1 | grep -o '[0-9]*$' || true)"
+          echo "seeded_count=${seeded_count:-unknown}" >> "$GITHUB_OUTPUT"
+
           rm -f /tmp/build-seed.sh /tmp/build-seed-env.txt /tmp/build-seed-stdout.txt
 
   # ---------------------------------------------------------------------
@@ -276,12 +294,54 @@ jobs:
     needs: build-demo-seed
     runs-on: ubuntu-latest
     steps:
+      # This is the actual pass/fail gate for demo verification: no `|| true`
+      # here. A Cloudflare 521 ("web server is down") or any other failure
+      # from these two checks fails the job and blocks the summary from
+      # reporting success.
       - name: Verify demo health and info endpoint
         run: |
           set -Eeuo pipefail
           curl --fail --silent --show-error --max-time 15 "https://${DEMO_DOMAIN}/health"
           echo
           curl --fail --silent --show-error --max-time 15 "https://${DEMO_DOMAIN}/demo-info"
+
+      # Diagnostics only (not a gate — runs whether the check above passed or
+      # failed, via SSM Run Command, never SSH/port 22). Individual commands
+      # tolerate failure with `|| true` because they exist to explain *why*
+      # the gate above failed (e.g. a Cloudflare 521 usually means nginx is
+      # down, not listening on 443, or the n8n container/health check is
+      # unhealthy on the demo host) — the gate itself already recorded
+      # success/failure before this step runs.
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: always()
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Remote diagnostics (via SSM, no SSH)
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/scripts/ssm-run.sh
+          cat > /tmp/diag-demo.sh <<'REMOTE'
+          echo "--- docker ps -a ---"
+          docker ps -a || true
+          echo "--- n8n container logs (tail 200) ---"
+          docker logs "$(docker compose -p n8n-demo --env-file /opt/n8n-demo/.env.demo -f /opt/n8n-demo/docker-compose.yml ps -q n8n 2>/dev/null)" --tail=200 2>&1 || true
+          echo "--- listening sockets ---"
+          ss -lntp || true
+          echo "--- nginx -t ---"
+          nginx -t || true
+          echo "--- systemctl status nginx ---"
+          systemctl status nginx --no-pager || true
+          echo "--- local n8n health ---"
+          curl -fsS --max-time 10 http://127.0.0.1:5678/health || echo "local n8n health check failed"
+          echo "--- local nginx TLS response ---"
+          curl -fkSs --max-time 10 https://127.0.0.1/ || echo "local nginx TLS check failed"
+          REMOTE
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/diag-demo.sh /tmp/diag-demo-stdout.txt || true
+          cat /tmp/diag-demo-stdout.txt || true
+          rm -f /tmp/diag-demo.sh /tmp/diag-demo-stdout.txt
 
   # ---------------------------------------------------------------------
   # 7. Verify production is still healthy after the demo refresh. Only runs
@@ -312,18 +372,49 @@ jobs:
   # 8. Refresh summary.
   # ---------------------------------------------------------------------
   refresh-summary:
-    needs: [verify-demo, verify-production-final]
+    needs:
+      - verify-production-source
+      - sanitize-and-validate-workflows
+      - deploy-demo
+      - build-demo-seed
+      - verify-demo
+      - verify-production-final
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Refresh summary
         run: |
-          echo "## Demo refresh summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Demo image: ${N8N_IMAGE}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production source host: ${PROD_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Demo host: ${DEMO_DOMAIN}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit SHA: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Export/sanitize/validate: ${{ needs.verify-production-final.result }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Demo verification: ${{ needs.verify-demo.result }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Production final verification: ${{ needs.verify-production-final.result }}" >> "$GITHUB_STEP_SUMMARY"
+          overall="success"
+          for result in \
+            "${{ needs.verify-production-source.result }}" \
+            "${{ needs.sanitize-and-validate-workflows.result }}" \
+            "${{ needs.deploy-demo.result }}" \
+            "${{ needs.build-demo-seed.result }}" \
+            "${{ needs.verify-demo.result }}" \
+            "${{ needs.verify-production-final.result }}"; do
+            if [ "$result" != "success" ]; then
+              overall="failed"
+            fi
+          done
+
+          {
+            echo "## Demo refresh summary"
+            echo "- Overall result: ${overall}"
+            echo "- Demo image: ${N8N_IMAGE}"
+            echo "- Production source host: ${PROD_DOMAIN}"
+            echo "- Demo host: ${DEMO_DOMAIN}"
+            echo "- Commit SHA: ${GITHUB_SHA}"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Production source health (pre-refresh): ${{ needs.verify-production-source.result }}"
+            echo "- Export/sanitize/validate: ${{ needs.sanitize-and-validate-workflows.result }}"
+            echo "- Demo deployment: ${{ needs.deploy-demo.result }}"
+            echo "- Demo workflow seed: ${{ needs.build-demo-seed.result }}"
+            echo "- Demo workflow seed count: ${{ needs.build-demo-seed.outputs.seeded_count }}"
+            echo "- Demo verification: ${{ needs.verify-demo.result }}"
+            echo "- Production final verification: ${{ needs.verify-production-final.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$overall" != "success" ]; then
+            echo "One or more demo refresh stages did not succeed; see fields above." >&2
+            exit 1
+          fi

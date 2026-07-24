@@ -134,12 +134,39 @@ main() {
     esac
 
     if [ "$import_count" -gt 0 ]; then
-      dc exec -T "$N8N_SERVICE" n8n import:workflow --help >/tmp/n8n-import-help.txt 2>&1 || true
-      if ! grep -q -- '--separate' /tmp/n8n-import-help.txt || ! grep -q -- '--input' /tmp/n8n-import-help.txt; then
-        fail "n8n import:workflow --help does not advertise --separate/--input on this pinned image; update this script for the current n8n version instead of guessing flags"
-      fi
-      log "importing sanitized workflows"
-      dc exec -T "$N8N_SERVICE" n8n import:workflow --separate --input=/imports
+      log "importing and verifying sanitized workflows via the shared seed script"
+      local demo_container demo_manifest
+      demo_container="$(dc ps -q "$N8N_SERVICE")"
+      [ -n "$demo_container" ] || fail "could not resolve the ${N8N_SERVICE} container id via docker compose"
+
+      # The demo's workflow set is whatever sanitize_workflows.py produced from
+      # today's production export, not a fixed repository manifest — so build a
+      # manifest on the fly from the sanitized files' own deterministic ids
+      # (same ids as production, since the sanitizer preserves them) and hand it
+      # to the same seed-n8n-workflows.sh production uses, for one shared
+      # import/verify implementation instead of two.
+      local wf_file
+      demo_manifest="$(mktemp)"
+      trap 'rm -f "$demo_manifest"' RETURN
+      jq -n '{environment: "demo", workflows: []}' > "$demo_manifest"
+      for wf_file in "$IMPORTS_DIR"/*.json; do
+        [ -f "$wf_file" ] || continue
+        jq --arg file "$(basename "$wf_file")" \
+           --arg id "$(jq -r '.id' "$wf_file")" \
+           --arg name "$(jq -r '.name' "$wf_file")" \
+           '.workflows += [{id: $id, file: $file, name: $name}]' \
+           "$demo_manifest" > "${demo_manifest}.tmp"
+        mv "${demo_manifest}.tmp" "$demo_manifest"
+      done
+
+      SEED_CONTAINER="$demo_container" \
+      SEED_WORKFLOW_DIR="$IMPORTS_DIR" \
+      SEED_MANIFEST="$demo_manifest" \
+      SEED_ENVIRONMENT="demo" \
+        "${DEMO_DIR}/scripts/seed-n8n-workflows.sh" || fail "workflow seeding failed"
+
+      rm -f "$demo_manifest"
+      trap - RETURN
     else
       log "no sanitized workflows to import, seeding an empty (but usable) demo instance"
     fi

@@ -24,7 +24,7 @@ EC2 instance A                          EC2 instance B (separate SG/IAM/EIP)
 Terraform (`infra/main.tf`) provisions the demo stack as a second instantiation of the
 same modules (`network`, `iam`, `ec2`, `ssm`) used for production, gated by
 `var.n8n_demo_enabled`. Nothing is shared between the two instantiations except the
-Terraform module *code*.
+Terraform module _code_.
 
 ## 2. Why the demo can be edited, and why it resets daily
 
@@ -53,20 +53,20 @@ somehow copied).
 
 ## 4. Isolation inventory
 
-| Resource | Production | Demo |
-|---|---|---|
-| EC2 instance | `module.ec2` | `module.ec2_demo` (separate instance, separate root volume, IMDSv2 required, encrypted EBS) |
-| Elastic IP | `module.ec2.elastic_ip` | `module.ec2_demo.elastic_ip` |
-| Security group | `module.network` | `module.network_demo` (no ingress unless `n8n_demo_allowed_admin_cidrs` is set) |
-| IAM role/profile | `<project>-ec2-role` | `<project>-demo-ec2-role` (scoped only to `/demo/*` SSM paths) |
-| SSM parameter path | `/linkedin-job-application-automation/env/*` | `/linkedin-job-application-automation/demo/env/*` |
-| Database | SQLite file in a Docker volume | Dedicated PostgreSQL container + volume |
-| Docker volumes | `linkedin-job-application-automation-n8n-*` | `n8n-demo-data`, `n8n-demo-postgres-data` |
-| Docker network/Compose project | plain `docker run` (no Compose project) | Compose project `n8n-demo`, network `n8n-demo-net` |
-| Encryption key | `N8N_ENCRYPTION_KEY` in prod SSM | Different `N8N_ENCRYPTION_KEY` in demo SSM — **never the same value** |
-| Nginx site | `linkedin-job-application-automation` | `n8n-demo` (`deploy/nginx/n8n-demo.conf`) |
-| Hostname | `n8n.ai-automation-platform.com` | `demo-n8n.ai-automation-platform.com` |
-| User accounts | your personal owner account | one shared `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` |
+| Resource                       | Production                                   | Demo                                                                                        |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| EC2 instance                   | `module.ec2`                                 | `module.ec2_demo` (separate instance, separate root volume, IMDSv2 required, encrypted EBS) |
+| Elastic IP                     | `module.ec2.elastic_ip`                      | `module.ec2_demo.elastic_ip`                                                                |
+| Security group                 | `module.network`                             | `module.network_demo` (no ingress unless `n8n_demo_allowed_admin_cidrs` is set)             |
+| IAM role/profile               | `<project>-ec2-role`                         | `<project>-demo-ec2-role` (scoped only to `/demo/*` SSM paths)                              |
+| SSM parameter path             | `/linkedin-job-application-automation/env/*` | `/linkedin-job-application-automation/demo/env/*`                                           |
+| Database                       | SQLite file in a Docker volume               | Dedicated PostgreSQL container + volume                                                     |
+| Docker volumes                 | `linkedin-job-application-automation-n8n-*`  | `n8n-demo-data`, `n8n-demo-postgres-data`                                                   |
+| Docker network/Compose project | plain `docker run` (no Compose project)      | Compose project `n8n-demo`, network `n8n-demo-net`                                          |
+| Encryption key                 | `N8N_ENCRYPTION_KEY` in prod SSM             | Different `N8N_ENCRYPTION_KEY` in demo SSM — **never the same value**                       |
+| Nginx site                     | `linkedin-job-application-automation`        | `n8n-demo` (`deploy/nginx/n8n-demo.conf`)                                                   |
+| Hostname                       | `n8n.ai-automation-platform.com`             | `demo-n8n.ai-automation-platform.com`                                                       |
+| User accounts                  | your personal owner account                  | one shared `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD`                                         |
 
 The demo IAM role (`infra/modules/iam`, instantiated with `name_suffix = "-demo"` and
 `path_prefix = "/linkedin-job-application-automation/demo"`) can only read SSM parameters
@@ -168,10 +168,10 @@ Pipeline (all in `.github/workflows/deploy.yml`, job `sanitize-and-validate-work
      (`config/n8n-demo-sanitization.json`)
    - **fails closed**: if it finds something that looks like a hard-coded secret, a private
      key block, an AWS metadata reference, a private IP, or a dangerous shell/file pattern
-     that it did *not* already know how to safely redact, it aborts the whole run rather than
+     that it did _not_ already know how to safely redact, it aborts the whole run rather than
      guessing
 3. **Validate** — `scripts/n8n/validate_demo_workflows.py` is a second, independent script
-   (not just a second function) that re-inspects the sanitizer's *output* for the same class
+   (not just a second function) that re-inspects the sanitizer's _output_ for the same class
    of problems, plus `active: true`, leftover credentials/webhookIds, and `$env` expressions.
    A non-empty problem list fails the pipeline before anything reaches the demo host.
 
@@ -190,7 +190,7 @@ wizard itself: `POST /rest/owner/setup` with `email`/`firstName`/`lastName`/`pas
 `scripts/n8n/build_demo_seed.sh` calls this once, right after a fresh database is created and
 n8n has run its migrations, using `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` from
 `.env.demo`. Because the daily reset restores the **database snapshot** taken after that
-step, the user is *not* recreated on every reset — it comes back for free as part of the
+step, the user is _not_ recreated on every reset — it comes back for free as part of the
 seed restore.
 
 ## 9. Clean seed build (`scripts/n8n/build_demo_seed.sh`)
@@ -205,6 +205,20 @@ atomically install the new dump as `demo-seed.dump` (after first copying the cur
 `demo-seed.previous.dump`) → write non-sensitive `metadata.json` → restart n8n → health check.
 Seed files live at `/opt/n8n-demo/seed/{demo-seed.dump,demo-seed.previous.dump}`,
 `root:root 0600`.
+
+**Workflow seeding here differs from production's** (see
+[docs/aws-production-deployment.md](aws-production-deployment.md#workflow-seeding)):
+production seeds from a fixed `workflows/manifest.json` in the repo, but the demo's
+workflow set is _derived daily_ from whatever is currently in production — the
+`sanitize-and-validate-workflows` CI job exports it, strips credentials/secrets
+(`scripts/n8n/sanitize_workflows.py`), and independently re-validates the result
+(`scripts/n8n/validate_demo_workflows.py`) before it ever reaches this host. Because the
+demo database is dropped and recreated from scratch on every build (see above), there is no
+"existing workflow" to accidentally duplicate — but the actual `n8n import:workflow` /
+`export:workflow` calls, and the post-import verification that every expected id landed
+exactly once, are done by the same `deploy/scripts/seed-n8n-workflows.sh` production uses
+(given a manifest built on the fly from the sanitized files' own ids), so the two
+environments share one seeding implementation instead of two.
 
 To refresh the seed manually (e.g. after editing workflows in the repo without a full
 deploy):
@@ -292,7 +306,7 @@ SSM parameters — production is untouched because it lives in entirely separate
    (or change it in `terraform.tfvars`' `n8n_demo_env_values` and `terraform apply`).
 2. Re-run the deploy pipeline (or just `deploy-n8n-demo.sh` via SSM) so `.env.demo` picks up
    the new value.
-3. Run `build_demo_seed.sh` again so the *seeded* database's owner account password matches
+3. Run `build_demo_seed.sh` again so the _seeded_ database's owner account password matches
    — otherwise the daily reset will keep restoring the old password.
 
 ## 14. Rotating the demo encryption key
@@ -331,7 +345,7 @@ from GitHub Actions (`deploy_demo: true`) to re-populate it from a fresh product
   fixture workflow, take a seed, mutate it, run `reset_demo.sh` against it, assert the
   mutation is gone) is described but not automated in CI in this change — it requires a
   Docker daemon, which this environment did not have available; see "Validation results" in
-  the final report for exactly what *was* run.
+  the final report for exactly what _was_ run.
 
 ## 17. Cloudflare: what remains manual
 
@@ -382,7 +396,7 @@ rebuild with `build_demo_seed.sh` (section 9).
 `DB_POSTGRESDB_USER`/`DATABASE` in `.env.demo` match what the seed was dumped with.
 
 **Demo password no longer works** — the daily reset restores whatever password was baked
-into the *seed*, not whatever is currently in `.env.demo`. Follow section 13 fully (update
+into the _seed_, not whatever is currently in `.env.demo`. Follow section 13 fully (update
 SSM, redeploy, rebuild seed) rather than just updating SSM.
 
 **Imported workflows are missing** — check `/opt/n8n-demo/imports` was non-empty at the time
@@ -396,11 +410,60 @@ workflow (or add a narrowly-scoped, reviewed entry to `config/n8n-demo-sanitizat
 **Production workflow export fails** — usually means `n8n export:workflow --help` on the
 currently-pinned image no longer advertises `--all`/`--separate`/`--output`; the job fails
 loudly rather than guessing. Check the n8n changelog for the new flag names and update
-`.github/workflows/deploy.yml`'s export step.
+`.github/workflows/refresh-demo.yml`'s export step.
 
 **SSM command fails** — `aws ssm get-command-invocation` output is printed to the job log
 (stderr only, no workflow content); check the demo/prod instance is `Online` in
 `aws ssm describe-instance-information`.
+
+**`ssh ... port 22 Operation timed out`** — expected, not a fault. See section 21: this
+architecture disables SSH entirely and uses SSM Run Command / SSM Session Manager instead. A
+port-22 timeout only proves the security group has no port-22 ingress rule (by design); it
+says nothing about whether nginx, Docker, or n8n are healthy. Use the diagnostics in section
+21, or the `verify-demo` job's remote-diagnostics step in `refresh-demo.yml`, instead of
+retrying SSH or opening port 22.
+
+**Cloudflare 521 ("Web server is down") on `demo-n8n.ai-automation-platform.com`** — 521
+means Cloudflare could not establish a TCP connection to the origin on port 443 at all (as
+opposed to a 502/504, which would mean it connected but got a bad/slow response). Work
+through, in order, via SSM (never SSH — section 21):
+
+1. Is the instance actually running? `aws ec2 describe-instances --instance-ids
+"$N8N_DEMO_INSTANCE_ID"` (state `running`) and `aws ssm describe-instance-information`
+   (`PingStatus: Online` — if it's not Online, SSM itself can't reach it either, which also
+   explains why deploys/resets would be silently failing).
+2. Is nginx running and listening on `0.0.0.0:443`? `systemctl status nginx --no-pager` and
+   `ss -lntp | grep :443` on the host (via SSM Session Manager or `ssm-run.sh`).
+3. Does `nginx -t` pass? A bad reload from a broken `deploy/nginx/n8n-demo.conf` push would
+   leave the last-known-good config running (nginx refuses to reload on `-t` failure) — but
+   check anyway; if nginx itself isn't running at all (crashed, never started), `-t` alone
+   won't tell you that.
+4. Is the demo n8n container up and healthy? `docker compose -p n8n-demo --env-file
+/opt/n8n-demo/.env.demo -f /opt/n8n-demo/docker-compose.yml ps` and `docker logs
+--tail=200 <container>`.
+5. Does `curl -fsS http://127.0.0.1:5678/health` succeed _on the host_? If not, this is an
+   n8n/container problem, not a network/nginx problem — check container logs and whether the
+   Postgres seed restore (section 10) actually completed.
+6. Does `curl -fkSs https://127.0.0.1/` succeed on the host (bypassing Cloudflare
+   entirely)? If yes but the public hostname still 521s, the problem is between Cloudflare
+   and the origin (security group, Elastic IP association, or DNS), not the host itself.
+7. Does the demo security group (`module.network_demo` in Terraform) allow inbound 80/443
+   from Cloudflare's IP ranges (or `0.0.0.0/0`, since Cloudflare's ranges change)? Compare
+   against `infra/modules/network`'s demo instantiation.
+8. Does the DNS `A`/`CNAME` record for `demo-n8n` actually point at the current demo Elastic
+   IP? An instance replacement (e.g. `terraform apply` recreating `module.ec2_demo`) changes
+   the Elastic IP association but not necessarily a stale DNS record if it was ever
+   hand-edited outside Terraform.
+9. Are the Cloudflare Origin Certificate/key present and valid on the host?
+   `/etc/nginx/ssl/demo-n8n.ai-automation-platform.com/{origin_certificate,origin_private_key}.pem`
+   — an expired or missing origin cert makes nginx fail TLS negotiation, which Cloudflare
+   also reports as 521.
+
+`refresh-demo.yml`'s `verify-demo` job now runs steps 2–5 automatically (via SSM, with
+`|| true` only on the diagnostic commands themselves — never on the actual pass/fail health
+checks) every time it runs, specifically so a 521 report comes with an immediate, in-the-Action-log
+answer to "which of these is it" instead of requiring someone to SSH in (which doesn't work)
+or manually SSM in under time pressure.
 
 **Nginx returns 502** — n8n container is down or unhealthy; `docker compose ps`,
 `docker compose logs n8n`, confirm `127.0.0.1:5678` is listening.
@@ -408,3 +471,39 @@ loudly rather than guessing. Check the n8n changelog for the new flag names and 
 **Health check fails** — confirm you're hitting `/health` (not `/healthz`, which does not
 exist on this pinned image) and that Nginx's `location = /health` block is present and not
 shadowed by a stricter `location /` rate limit.
+
+## 21. Accessing hosts: SSM, not SSH
+
+Neither the production nor the demo security group has an inbound rule for port 22. This is
+deliberate — CI/CD deploys entirely over AWS SSM Run Command (`deploy/scripts/ssm-run.sh`),
+never SSH, so there is no reason to keep a port open whose only purpose would be interactive
+human access, and every open port is attack surface. **An `ssh ... port 22 ... Operation
+timed out` is the expected, correct result of trying to SSH into either host** — it proves
+the security group has no port-22 ingress, nothing more. It is not a health signal for
+nginx, Docker, or n8n; do not "fix" it by adding a port-22 rule.
+
+For interactive access (debugging, one-off commands, following logs live), use AWS SSM
+Session Manager, which tunnels a shell over the same IAM/SSM path CI already uses — no
+inbound port required at all:
+
+```bash
+aws ssm start-session --region eu-central-1 --target "$N8N_DEMO_INSTANCE_ID"
+# or, for production:
+aws ssm start-session --region eu-central-1 --target "$N8N_INSTANCE_ID"
+```
+
+This requires the AWS CLI (`v2`, see the Session Manager plugin install docs) and the same
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (or an assumable role) CI uses, with
+`ssm:StartSession` permission against the target instance.
+
+For a single non-interactive command without opening a session, prefer
+`aws ssm send-command` (see the examples throughout this doc) or
+`deploy/scripts/ssm-run.sh <region> <instance-id> <script> <stdout-file>` locally, which is
+the exact same helper CI uses and gives you its retry/timeout/error-surfacing behavior
+instead of hand-rolling `send-command`/`get-command-invocation` polling.
+
+If you have a personal shell alias or function pointing `ssh ...` at either host's IP (for
+example, one left over from before this project moved to SSM-only access), replace it with
+an `aws ssm start-session` alias instead — that alias lives in your own shell config
+(`~/.bashrc`/`~/.zshrc`), not in this repository, so it isn't something this repo's tooling
+can detect or fix for you.
