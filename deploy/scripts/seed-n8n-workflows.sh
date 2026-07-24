@@ -109,7 +109,9 @@ main() {
 
   local dup_ids
   dup_ids="$(echo "$manifest_json" | jq -r '[.workflows[].id] | group_by(.) | map(select(length > 1)) | .[][0]' | sort -u)"
-  [ -z "$dup_ids" ] || fail "duplicate workflow id(s) in manifest: $(echo "$dup_ids" | tr '\n' ' ')"
+  if [ -n "$dup_ids" ]; then
+    fail "duplicate workflow id(s) in manifest: $(echo "$dup_ids" | tr '\n' ' ')"
+  fi
 
   wait_for_container_health
 
@@ -128,10 +130,21 @@ main() {
   log "copying ${expected_count} manifest-managed workflow file(s) into the container"
   local wid file
   while IFS=$'\t' read -r wid file; do
-    [ -n "$wid" ] && [ -n "$file" ] || fail "manifest entry missing id or file"
-    [ -f "${WORKFLOW_DIR}/${file}" ] || fail "workflow file not found: ${WORKFLOW_DIR}/${file}"
-    docker cp "${WORKFLOW_DIR}/${file}" "${CONTAINER}:${remote_import_dir}/${file}"
-  done < <(echo "$manifest_json" | jq -r '.workflows[] | [.id, .file] | @tsv')
+    if [ -z "$wid" ] || [ -z "$file" ]; then
+      fail "manifest entry missing id or file"
+    fi
+
+    if [ ! -f "${WORKFLOW_DIR}/${file}" ]; then
+      fail "workflow file not found: ${WORKFLOW_DIR}/${file}"
+    fi
+
+    docker cp \
+      "${WORKFLOW_DIR}/${file}" \
+      "${CONTAINER}:${remote_import_dir}/${file}"
+  done < <(
+    echo "$manifest_json" |
+      jq -r '.workflows[] | [.id, .file] | @tsv'
+  )
 
   log "importing workflows via n8n CLI (upsert by deterministic id)"
   if ! docker exec "$CONTAINER" n8n import:workflow --separate --input="$remote_import_dir"; then
@@ -178,9 +191,17 @@ main() {
   rm -rf "$local_export_dir"
   trap - RETURN
 
-  [ -z "$missing" ] || fail "expected workflow id(s) missing after import: ${missing}"
-  [ -z "$duplicated" ] || fail "duplicate workflow id(s) found after import (n8n did not upsert as expected): ${duplicated}"
-  [ "$seeded_count" -eq "$expected_count" ] || fail "seeded count (${seeded_count}) does not match manifest count (${expected_count})"
+  if [ -n "$missing" ]; then
+    fail "expected workflow id(s) missing after import: ${missing}"
+  fi
+
+  if [ -n "$duplicated" ]; then
+    fail "duplicate workflow id(s) found after import (n8n did not upsert as expected): ${duplicated}"
+  fi
+
+  if [ "$seeded_count" -ne "$expected_count" ]; then
+    fail "seeded count (${seeded_count}) does not match manifest count (${expected_count})"
+  fi
 
   log "seed verification passed: ${seeded_count}/${expected_count} managed workflow(s) present, no duplicates"
   echo "SEEDED_WORKFLOW_COUNT=${seeded_count}"
