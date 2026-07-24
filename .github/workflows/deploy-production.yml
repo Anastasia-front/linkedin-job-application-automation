@@ -23,6 +23,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   INSTANCE_ID: ${{ vars.N8N_INSTANCE_ID }}
   PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
+  DEPLOY_ARTIFACTS_BUCKET: ${{ vars.DEPLOY_ARTIFACTS_BUCKET }}
   # push events have no workflow_dispatch inputs, so fall back to the pinned default.
   N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
   N8N_IMAGE_PREVIOUS: ${{ github.event.inputs.previous_image || '' }}
@@ -42,6 +43,7 @@ jobs:
           test -n "$AWS_REGION"
           test -n "$INSTANCE_ID"
           test -n "$N8N_IMAGE"
+          test -n "$DEPLOY_ARTIFACTS_BUCKET"
           test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
           test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
 
@@ -138,21 +140,45 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # AWS SSM RunCommand documents (parameters + script content combined)
+      # have a hard ~97KB total size limit (MaxDocumentSizeExceeded). A
+      # base64-encoded tar of workflows/*.json alone is already well past
+      # that, so it goes through S3 instead of being embedded like
+      # seed-n8n-workflows.sh (~11KB) below. Uploaded under production/ only
+      # — the production EC2 role can only read that prefix (infra/modules/s3).
+      - name: Upload workflow manifest + files to S3
+        id: upload
+        run: |
+          set -Eeuo pipefail
+          key="production/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-workflows.tar"
+          tar -C workflows -cf /tmp/workflows.tar .
+          aws s3 cp --region "$AWS_REGION" /tmp/workflows.tar "s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}"
+          rm -f /tmp/workflows.tar
+          echo "s3_uri=s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}" >> "$GITHUB_OUTPUT"
+
       - name: Seed production workflows via SSM
         id: seed
         run: |
           set -Eeuo pipefail
           chmod +x deploy/scripts/ssm-run.sh
 
-          WORKFLOWS_TAR_BASE64="$(tar -C workflows -cf - . | base64 -w0)"
           SEED_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/seed-n8n-workflows.sh)"
           CONTAINER_NAME="linkedin-job-application-automation-n8n"
+          WORKFLOWS_S3_URI="${{ steps.upload.outputs.s3_uri }}"
 
+          # aws cli is already installed on the host by the deploy-production
+          # job that ran just before this one (deploy-n8n.sh's ensure_runtime);
+          # this job only depends on it, it doesn't reinstall it.
           cat > /tmp/seed-prod-remote.sh <<'REMOTE'
           set -Eeuo pipefail
+          command -v aws >/dev/null 2>&1 || { echo "aws cli not found on host" >&2; exit 1; }
+
           WORKDIR="$(mktemp -d)"
           trap 'rm -rf "$WORKDIR"' EXIT
-          echo "$WORKFLOWS_TAR_BASE64" | base64 -d | tar -x -C "$WORKDIR"
+          aws s3 cp --region "$AWS_REGION" "$WORKFLOWS_S3_URI" "${WORKDIR}/workflows.tar"
+          tar -x -C "$WORKDIR" -f "${WORKDIR}/workflows.tar"
+          rm -f "${WORKDIR}/workflows.tar"
+
           echo "$SEED_SCRIPT_BASE64" | base64 -d > "${WORKDIR}/seed-n8n-workflows.sh"
           chmod 0700 "${WORKDIR}/seed-n8n-workflows.sh"
 
@@ -164,9 +190,10 @@ jobs:
           REMOTE
 
           cat > /tmp/seed-prod-env.txt <<EOF
-          WORKFLOWS_TAR_BASE64="${WORKFLOWS_TAR_BASE64}"
+          AWS_REGION="${AWS_REGION}"
           SEED_SCRIPT_BASE64="${SEED_SCRIPT_BASE64}"
           CONTAINER_NAME="${CONTAINER_NAME}"
+          WORKFLOWS_S3_URI="${WORKFLOWS_S3_URI}"
           EOF
 
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/seed-prod-remote.sh /tmp/seed-prod-stdout.txt /tmp/seed-prod-env.txt
@@ -181,6 +208,12 @@ jobs:
             echo "Seeding did not report a workflow count; treating as failure." >&2
             exit 1
           fi
+
+      - name: Delete uploaded artifact from S3
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          aws s3 rm --region "$AWS_REGION" "${{ steps.upload.outputs.s3_uri }}" || true
 
   # ---------------------------------------------------------------------
   # 4. Verify production health after deploy + seeding (via SSM, hitting

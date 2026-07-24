@@ -220,6 +220,14 @@ exactly once, are done by the same `deploy/scripts/seed-n8n-workflows.sh` produc
 (given a manifest built on the fly from the sanitized files' own ids), so the two
 environments share one seeding implementation instead of two.
 
+The sanitized tar itself is transferred the same way production's is: uploaded to the
+`DEPLOY_ARTIFACTS_BUCKET` S3 bucket under a `demo/` prefix by the `deploy-demo` CI job, then
+downloaded on the demo host with `aws s3 cp` (using the demo IAM role, scoped to `demo/*`
+only — never `production/*`) inside `deploy-n8n-demo.sh`. This is required, not optional: AWS
+SSM RunCommand documents cap out at ~97KB total, and a base64-encoded sanitized-workflow tar
+routinely exceeds that on its own, so it can't be embedded in the SSM command the way the
+Nginx config and small scripts are. CI deletes the S3 object right after the deploy step.
+
 To refresh the seed manually (e.g. after editing workflows in the repo without a full
 deploy):
 

@@ -21,6 +21,7 @@ env:
   DEMO_INSTANCE_ID: ${{ vars.N8N_DEMO_INSTANCE_ID }}
   PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
   DEMO_DOMAIN: ${{ vars.N8N_DEMO_DOMAIN }}
+  DEPLOY_ARTIFACTS_BUCKET: ${{ vars.DEPLOY_ARTIFACTS_BUCKET }}
   # scheduled runs have no workflow_dispatch inputs, so fall back to the pinned default.
   N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
 
@@ -40,6 +41,7 @@ jobs:
           test -n "$INSTANCE_ID"
           test -n "$DEMO_INSTANCE_ID"
           test -n "$N8N_IMAGE"
+          test -n "$DEPLOY_ARTIFACTS_BUCKET"
           test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
           test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
 
@@ -206,6 +208,20 @@ jobs:
           name: sanitized-workflows
           path: /tmp/artifact
 
+      # AWS SSM RunCommand documents (parameters + script content combined)
+      # have a hard ~97KB total size limit. A base64-encoded sanitized
+      # workflow tar routinely exceeds that on its own, so it goes through
+      # S3 instead of being embedded like the small config files below.
+      # Uploaded under demo/ only — the demo EC2 role can only read that
+      # prefix (infra/modules/s3).
+      - name: Upload sanitized workflows to S3
+        id: upload
+        run: |
+          set -Eeuo pipefail
+          key="demo/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-sanitized-workflows.tar"
+          aws s3 cp --region "$AWS_REGION" /tmp/artifact/sanitized-workflows.tar "s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}"
+          echo "s3_uri=s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy demo stack via SSM
         run: |
           set -Eeuo pipefail
@@ -217,7 +233,6 @@ jobs:
           BUILD_SEED_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/build_demo_seed.sh)"
           SEED_WORKFLOWS_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/seed-n8n-workflows.sh)"
           RESET_SCRIPT_BASE64="$(base64 -w0 scripts/n8n/reset_demo.sh)"
-          WORKFLOWS_TAR_BASE64="$(base64 -w0 /tmp/artifact/sanitized-workflows.tar)"
           DEPLOY_SCRIPT_BASE64="$(base64 -w0 deploy/scripts/deploy-n8n-demo.sh)"
 
           cat > /tmp/demo-remote.sh <<'REMOTE'
@@ -235,13 +250,19 @@ jobs:
           BUILD_SEED_SCRIPT_BASE64="${BUILD_SEED_SCRIPT_BASE64}"
           SEED_WORKFLOWS_SCRIPT_BASE64="${SEED_WORKFLOWS_SCRIPT_BASE64}"
           RESET_SCRIPT_BASE64="${RESET_SCRIPT_BASE64}"
-          WORKFLOWS_TAR_BASE64="${WORKFLOWS_TAR_BASE64}"
+          WORKFLOWS_S3_URI="${{ steps.upload.outputs.s3_uri }}"
           DEPLOY_SCRIPT_BASE64="${DEPLOY_SCRIPT_BASE64}"
           EOF
 
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/demo-remote.sh /tmp/demo-stdout.txt /tmp/demo-env.txt
           cat /tmp/demo-stdout.txt
           rm -f /tmp/demo-remote.sh /tmp/demo-env.txt /tmp/demo-stdout.txt /tmp/artifact/sanitized-workflows.tar
+
+      - name: Delete uploaded artifact from S3
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          aws s3 rm --region "$AWS_REGION" "${{ steps.upload.outputs.s3_uri }}" || true
 
   # ---------------------------------------------------------------------
   # 5. Build the clean demo seed and immediately reset from it, proving the

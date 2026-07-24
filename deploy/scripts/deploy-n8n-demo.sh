@@ -167,12 +167,24 @@ install_compose_file() {
 install_sanitized_workflows() {
   # Optional: a tar of already-sanitized, already-validated workflow JSON
   # files produced by the sanitize-and-validate CI job. Never raw production
-  # exports. Safe to skip entirely (WORKFLOWS_TAR_BASE64 unset) when this
-  # step only needs to refresh infra/nginx/compose without touching workflows.
-  if [ -n "${WORKFLOWS_TAR_BASE64:-}" ]; then
+  # exports. Safe to skip entirely (WORKFLOWS_S3_URI unset) when this step
+  # only needs to refresh infra/nginx/compose without touching workflows.
+  #
+  # Fetched from S3 (not base64-embedded in the SSM command like the nginx
+  # config/compose file/scripts above) because AWS SSM RunCommand documents
+  # have a hard ~97KB total size limit and a base64-encoded workflow tar
+  # alone routinely exceeds that. The demo EC2 role has read-only access
+  # scoped to this bucket's demo/* prefix only (infra/modules/s3).
+  if [ -n "${WORKFLOWS_S3_URI:-}" ]; then
     rm -rf "${DEMO_DIR}/imports"
     mkdir -p "${DEMO_DIR}/imports"
-    echo "$WORKFLOWS_TAR_BASE64" | base64 -d | tar -x -C "${DEMO_DIR}/imports"
+    local tmp_tar
+    tmp_tar="$(mktemp)"
+    trap 'rm -f "$tmp_tar"' RETURN
+    aws s3 cp --region "$AWS_REGION" "$WORKFLOWS_S3_URI" "$tmp_tar"
+    tar -x -C "${DEMO_DIR}/imports" -f "$tmp_tar"
+    rm -f "$tmp_tar"
+    trap - RETURN
   fi
 }
 

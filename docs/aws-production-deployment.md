@@ -108,6 +108,9 @@ Required GitHub repository variables:
 - `AWS_REGION=eu-central-1`
 - `N8N_INSTANCE_ID=<Terraform instance_id output>`
 - `N8N_PROD_DOMAIN=n8n.ai-automation-platform.com`
+- `DEPLOY_ARTIFACTS_BUCKET=<Terraform deploy_artifacts_bucket output>` — used to transfer the
+  workflow manifest tar during seeding (see [Workflow seeding](#workflow-seeding) below);
+  provisioned by `infra/modules/s3`
 
 Required GitHub secrets:
 
@@ -158,10 +161,23 @@ enforces this (run in CI, and locally — see below): it fails the build on dupl
 missing files, id/file mismatches, or a workflow with no id at all.
 
 **How seeding works**: the CI `seed-production-workflows` job packages `workflows/*.json` +
-`manifest.json` into a tar, transfers it to the production host over the existing SSM
-mechanism (base64-embedded in the SSM command, same pattern as the Nginx config transfer —
-no S3, no new infrastructure), and runs `deploy/scripts/seed-n8n-workflows.sh` there. That
-script:
+`manifest.json` into a tar and uploads it to a private S3 bucket
+(`infra/modules/s3`, `DEPLOY_ARTIFACTS_BUCKET`, under a `production/` prefix), then triggers
+`deploy/scripts/seed-n8n-workflows.sh` on the production host via the existing SSM mechanism,
+passing only the small S3 object URI through the SSM command (not the tar itself). The host
+downloads the tar with `aws s3 cp` using its own IAM role, which can only read the
+`production/*` prefix of that bucket (never `demo/*`) — the S3 upload is not a new inbound
+network path, and CI deletes the object again right after the SSM step finishes (a bucket
+lifecycle rule expires anything left over after 1 day as a backstop).
+
+This exists because AWS SSM RunCommand documents (parameters + script content combined) have
+a hard **~97KB** total size limit (`MaxDocumentSizeExceeded`); a base64-encoded tar of this
+repo's workflow JSON files is already well over that on its own. Everything else this
+pipeline sends over SSM (the seeding script itself, the Nginx config, the deploy scripts) is
+small enough to stay embedded directly in the SSM command, as before — only the workflow tar
+needed to move to S3.
+
+`deploy/scripts/seed-n8n-workflows.sh` itself:
 
 1. waits for the production container to be healthy,
 2. `docker cp`s each manifest-listed file into the container,
