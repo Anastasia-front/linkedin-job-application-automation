@@ -50,7 +50,12 @@ services:
         max-file: "3"
 
   n8n:
-    image: docker.n8n.io/n8nio/n8n:1.102.4
+    # ${N8N_IMAGE} is exported by deploy/scripts/deploy-n8n-demo.sh before this
+    # compose file runs, so a real deploy always uses whatever image tag CI
+    # resolved (see n8n-version.txt / .github/workflows/update-n8n-version.yml).
+    # The literal fallback below only applies to local `docker compose config`
+    # validation and ad-hoc local runs where N8N_IMAGE isn't set.
+    image: ${N8N_IMAGE:-docker.n8n.io/n8nio/n8n:2.32.5}
     container_name: n8n-demo
     restart: unless-stopped
     security_opt:

@@ -15,10 +15,14 @@
 # called from the CI `validate` job) — by the time this script runs, the
 # manifest is already known-good; this script only has to trust and apply it.
 #
-# Strategy (n8n 1.102.4 CLI):
+# Strategy: the pinned n8n image tag changes over time
+# (n8n-version.txt / .github/workflows/update-n8n-version.yml keep it current) —
+# nothing here hardcodes a specific n8n version.
 #   - `n8n import:workflow --separate --input=<dir>` imports every *.json
-#     file in a directory in one call (confirmed via
-#     `n8n import:workflow --help` on the pinned image, not guessed).
+#     file in a directory in one call. This script never assumes the flags
+#     exist: it checks `n8n import:workflow --help` against the actually
+#     running image below and fails loudly if `--separate`/`--input` aren't
+#     advertised, rather than guessing they still work after a version bump.
 #   - Workflow JSON files in this repo carry a stable top-level "id". n8n's
 #     import command persists entities via an upsert keyed on that id: an
 #     existing workflow with a matching id is updated in place rather than

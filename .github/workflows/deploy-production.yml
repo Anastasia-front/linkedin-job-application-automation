@@ -9,7 +9,7 @@ on:
       n8n_image:
         description: "Pinned n8n image to deploy to production"
         required: true
-        default: "docker.n8n.io/n8nio/n8n:1.102.4"
+        default: "docker.n8n.io/n8nio/n8n:2.32.5"
       previous_image:
         description: "Optional previous image fallback if no running production container exists"
         required: false
@@ -25,7 +25,7 @@ env:
   PROD_DOMAIN: ${{ vars.N8N_PROD_DOMAIN }}
   DEPLOY_ARTIFACTS_BUCKET: ${{ vars.DEPLOY_ARTIFACTS_BUCKET }}
   # push events have no workflow_dispatch inputs, so fall back to the pinned default.
-  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
+  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:2.32.5' }}
   N8N_IMAGE_PREVIOUS: ${{ github.event.inputs.previous_image || '' }}
 
 jobs:

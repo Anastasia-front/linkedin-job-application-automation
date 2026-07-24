@@ -9,7 +9,7 @@ on:
       n8n_image:
         description: "Pinned n8n image to deploy to demo"
         required: true
-        default: "docker.n8n.io/n8nio/n8n:1.102.4"
+        default: "docker.n8n.io/n8nio/n8n:2.32.5"
 
 concurrency:
   group: n8n-demo-refresh
@@ -23,7 +23,7 @@ env:
   DEMO_DOMAIN: ${{ vars.N8N_DEMO_DOMAIN }}
   DEPLOY_ARTIFACTS_BUCKET: ${{ vars.DEPLOY_ARTIFACTS_BUCKET }}
   # scheduled runs have no workflow_dispatch inputs, so fall back to the pinned default.
-  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:1.102.4' }}
+  N8N_IMAGE: ${{ github.event.inputs.n8n_image || 'docker.n8n.io/n8nio/n8n:2.32.5' }}
 
 jobs:
   # ---------------------------------------------------------------------

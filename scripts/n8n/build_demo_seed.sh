@@ -31,7 +31,7 @@ LOG_FILE="/var/log/n8n-demo-reset.log"
 HEALTH_URL="http://127.0.0.1:5678/health"
 SANITIZER_VERSION="1"
 GIT_COMMIT="${GIT_COMMIT:-unknown}"
-N8N_IMAGE_TAG="${N8N_IMAGE_TAG:-docker.n8n.io/n8nio/n8n:1.102.4}"
+N8N_IMAGE_TAG="${N8N_IMAGE_TAG:-docker.n8n.io/n8nio/n8n:2.32.5}"
 
 log() {
   echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] build_demo_seed: $*"

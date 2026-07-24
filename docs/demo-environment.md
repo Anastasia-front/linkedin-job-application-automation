@@ -385,11 +385,16 @@ production secret value.
   can see/overwrite each other's in-progress edits until the next reset.
 - No documented, version-stable CLI for creating additional users; the owner-setup REST
   endpoint is the closest stable mechanism (section 8).
-- `$env` blocking, community-package disabling, and file-access restriction env vars are
-  supported by the pinned 1.102.4 image (confirmed via this repo's own existing production
-  `terraform.tfvars.example`, which already sets several of them), but **verify against
-  `docker run --rm docker.n8n.io/n8nio/n8n:1.102.4 --help` / the n8n changelog** before
-  bumping the pinned version — these flags have changed across n8n major versions.
+- `$env` blocking, community-package disabling, and file-access restriction env vars were
+  supported as of the version pinned when this was written (confirmed via this repo's own
+  existing production `terraform.tfvars.example`, which already sets several of them), but
+  **verify against `docker run --rm docker.n8n.io/n8nio/n8n:$(cat ../n8n-version.txt) --help`
+  / the n8n changelog** whenever the pin changes — these flags have changed across n8n major
+  versions, and the pin now moves regularly via
+  [`.github/workflows/update-n8n-version.yml`](../.github/workflows/update-n8n-version.yml)
+  (see [docs/aws-production-deployment.md#keeping-n8n-updated](aws-production-deployment.md#keeping-n8n-updated)).
+  That automated check validates syntax/config/tests on every bump but does **not** check
+  n8n-specific env var support — review the linked release notes on each bump PR.
 
 ## 20. Runbook
 

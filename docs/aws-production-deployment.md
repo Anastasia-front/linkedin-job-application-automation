@@ -181,8 +181,10 @@ needed to move to S3.
 
 1. waits for the production container to be healthy,
 2. `docker cp`s each manifest-listed file into the container,
-3. runs `n8n import:workflow --separate --input=<dir>` (confirmed via
-   `n8n import:workflow --help` on the pinned `1.102.4` image — the flags are not guessed),
+3. runs `n8n import:workflow --separate --input=<dir>` (confirmed at runtime via
+   `n8n import:workflow --help` against whatever image is actually running — the flags are
+   never guessed, which matters because the pinned version now changes regularly; see
+   [Keeping n8n updated](#keeping-n8n-updated) below),
 4. **verifies** the result with `n8n export:workflow --all --separate`, checking that every
    manifest id exists in the container's database exactly once.
 
@@ -273,3 +275,44 @@ Cloudflare Access cannot be provisioned from this repository (no Cloudflare Terr
 4. Policy: Action `Allow`, Include → Emails → your email only. Everything else denies by default (Access is deny-by-default; there is no separate "deny all" rule to add).
 5. Session duration: 24h is reasonable for a personal instance; shorter if you want to re-auth more often.
 6. Do not add this application/policy to `demo-n8n.ai-automation-platform.com` — the demo is deliberately public. See [docs/demo-environment.md](demo-environment.md).
+
+## Keeping n8n updated
+
+The pinned n8n image tag is never `latest` — n8n's own docs recommend pinning a specific
+version in production, and this repo enforces it (CI and the deploy scripts always resolve
+to a concrete `X.Y.Z` tag). Instead, staying current is automated:
+
+- **[`n8n-version.txt`](../n8n-version.txt)** at the repo root is the single source of truth:
+  one line, the currently-pinned version (e.g. `2.32.5`). Every other place that needs the
+  full image reference (`docker-compose.yml`, `docker-compose.demo.yml`,
+  `.github/workflows/deploy-production.yml`'s and `refresh-demo.yml`'s `workflow_dispatch`
+  default / push fallback, `scripts/n8n/build_demo_seed.sh`'s fallback) is kept in sync with
+  it by the workflow below rather than hand-edited independently.
+- **[`.github/workflows/update-n8n-version.yml`](../.github/workflows/update-n8n-version.yml)**
+  runs daily (`0 6 * * *` UTC) plus on manual dispatch. It queries the Docker Hub tags API for
+  `n8nio/n8n`, filters to plain stable `X.Y.Z` tags (excluding `next`/`beta`/nightly channels
+  and architecture-suffixed variants), and compares the newest one against
+  `n8n-version.txt`. If newer, it bumps every reference above, runs the same validation the
+  `validate` CI job runs (`bash -n`, shellcheck, YAML parse, both compose files' `config`,
+  pytest), and opens a pull request — it never merges or deploys anything itself.
+- **Merging that PR is what actually ships the new version**: `deploy-production.yml` already
+  runs on every push to `main` (this includes the `seed-production-workflows` and
+  `verify-production` steps, so a bad version bump fails the deployment and is visible
+  immediately, not silently). `refresh-demo.yml` picks up the new pinned version on its next
+  scheduled run.
+- **Before merging**, read the PR body's links — n8n's
+  [release notes](https://docs.n8n.io/changelog/release-notes-2.x/) and
+  [update guide](https://docs.n8n.io/deploy/host-n8n/keep-n8n-running/update-n8n/) — since a
+  major-version bump can include breaking changes (changed CLI flags, new required env vars,
+  node behavior changes) that no amount of automated validation catches with certainty.
+  `seed-n8n-workflows.sh` independently re-checks `n8n import:workflow --help` against
+  whatever image is actually running on every deploy, so CLI flag drift specifically fails
+  loudly rather than silently breaking workflow seeding — but that's a narrower guarantee
+  than "this version has no breaking changes for you."
+- To bump manually instead of waiting for the scheduled check: trigger
+  `update-n8n-version.yml` via `workflow_dispatch`, or edit `n8n-version.txt` and the same
+  literal fallbacks by hand in one PR.
+- To deploy a specific version once without changing the pin (e.g. to test a release
+  candidate): use `deploy-production.yml`'s `workflow_dispatch` with an explicit `n8n_image`
+  input — this does not touch `n8n-version.txt`, so the next scheduled/automatic deploy goes
+  back to the pinned version.

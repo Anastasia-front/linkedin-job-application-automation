@@ -1,0 +1,154 @@
+name: Check for n8n updates
+
+# Keeps the pinned n8n version current without ever using a `:latest` tag at
+# deploy time: this job resolves the current latest *stable* Docker Hub tag,
+# and if it differs from n8n-version.txt (the single source of truth every
+# other file's literal fallback is derived from), opens a PR that bumps the
+# pin everywhere it's written. Merging that PR to main is what actually
+# deploys it — deploy-production.yml already runs on every push to main, and
+# refresh-demo.yml picks it up on its next scheduled run. This workflow only
+# proposes the bump; it never merges or deploys anything itself, since n8n
+# releases can carry breaking changes (see the changelog link in the PR body)
+# that deserve a human glance before hitting production.
+on:
+  schedule:
+    # 06:00 UTC daily.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: n8n-version-check
+  cancel-in-progress: false
+
+jobs:
+  check-n8n-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine latest stable n8n version
+        id: latest
+        run: |
+          set -Eeuo pipefail
+          # Docker Hub tags, filtered to plain "X.Y.Z" (excludes -amd64/-arm64
+          # arch variants, -<sha> build variants, and the next/beta/nightly
+          # channels), sorted as semver, take the newest.
+          latest="$(
+            curl --fail --silent --show-error \
+              'https://hub.docker.com/v2/repositories/n8nio/n8n/tags?page_size=100' \
+              | jq -r '
+                  [.results[] | select(.name | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))]
+                  | sort_by(.name | split(".") | map(tonumber))
+                  | last
+                  | .name // empty
+                '
+          )"
+          test -n "$latest"
+          echo "Latest stable tag on Docker Hub: ${latest}"
+          echo "version=${latest}" >> "$GITHUB_OUTPUT"
+
+      - name: Compare against the pinned version
+        id: compare
+        run: |
+          set -Eeuo pipefail
+          current="$(tr -d '[:space:]' < n8n-version.txt)"
+          test -n "$current"
+          echo "current=${current}" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "${{ steps.latest.outputs.version }}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump the pinned version everywhere it's written
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          set -Eeuo pipefail
+          old="${{ steps.compare.outputs.current }}"
+          new="${{ steps.latest.outputs.version }}"
+
+          echo "$new" > n8n-version.txt
+
+          files="$(grep -rl "docker\.n8n\.io/n8nio/n8n:${old}" \
+            .github/workflows deploy scripts docs README.md \
+            docker-compose.yml docker-compose.demo.yml 2>/dev/null || true)"
+          if [ -n "$files" ]; then
+            echo "$files" | xargs sed -i "s|docker\.n8n\.io/n8nio/n8n:${old}|docker.n8n.io/n8nio/n8n:${new}|g"
+          fi
+
+      - name: Validate the bump
+        if: steps.compare.outputs.changed == 'true'
+        run: |
+          set -Eeuo pipefail
+          for f in deploy/scripts/*.sh scripts/n8n/*.sh; do
+            bash -n "$f"
+          done
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck deploy/scripts/*.sh scripts/n8n/*.sh
+          fi
+          python3 -c "
+          import yaml
+          yaml.safe_load(open('.github/workflows/deploy-production.yml'))
+          yaml.safe_load(open('.github/workflows/refresh-demo.yml'))
+          yaml.safe_load(open('.github/workflows/update-n8n-version.yml'))
+          "
+          cp .env.example .env
+          docker compose config >/dev/null
+          rm -f .env
+          cp .env.demo.example .env.demo
+          docker compose -f docker-compose.demo.yml --env-file .env.demo config >/dev/null
+          rm -f .env.demo
+          pip install --quiet pytest
+          python3 -m pytest tests/n8n -q
+
+      - name: Open pull request
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OLD_VERSION: ${{ steps.compare.outputs.current }}
+          NEW_VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          branch="chore/bump-n8n-${NEW_VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch ${branch} already exists on origin; a PR for this version is presumably already open."
+            exit 0
+          fi
+
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "chore: bump n8n ${OLD_VERSION} -> ${NEW_VERSION}"
+          git push origin "$branch"
+
+          body="$(cat <<EOF
+          Automated version bump: n8n \`${OLD_VERSION}\` -> \`${NEW_VERSION}\`.
+
+          **Before merging**, review what changed:
+          - n8n release notes: https://docs.n8n.io/changelog/release-notes-2.x/
+          - Update guide: https://docs.n8n.io/deploy/host-n8n/keep-n8n-running/update-n8n/
+
+          Merging this PR to \`main\` deploys \`${NEW_VERSION}\` to **production** automatically
+          (deploy-production.yml runs on every push to main, including its workflow seed +
+          health verification steps). The demo environment picks it up on its next scheduled
+          refresh-demo.yml run (daily, 02:00 UTC), or immediately via that workflow's manual
+          dispatch.
+
+          If this version introduces a breaking change that needs a corresponding repo change
+          (e.g. a new required environment variable, a changed CLI flag), make that change in
+          this PR before merging — \`deploy-production.yml\`'s \`validate\` job and
+          \`seed-n8n-workflows.sh\`'s own \`n8n import:workflow --help\` check will catch most
+          CLI-flag drift, but will not catch every kind of breaking change.
+          EOF
+          )"
+
+          gh pr create \
+            --title "Bump n8n ${OLD_VERSION} -> ${NEW_VERSION}" \
+            --body "$body"
