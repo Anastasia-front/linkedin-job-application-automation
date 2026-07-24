@@ -36,8 +36,47 @@ require_cmd() {
   sudo apt-get install -y "$package"
 }
 
+# Ubuntu dropped the apt "awscli" package's v1 build for 22.04+/24.04, so
+# `apt-get install awscli` has no installation candidate there. Install the
+# official AWS CLI v2 bundle from Amazon instead: it is architecture-aware,
+# self-contained (no system Python dependency), and is the vendor-supported
+# path for Ubuntu 22.04/24.04 on both amd64 and arm64.
+install_aws_cli() {
+  if command -v aws >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local arch
+  case "$(uname -m)" in
+    x86_64) arch="x86_64" ;;
+    aarch64|arm64) arch="aarch64" ;;
+    *)
+      echo "Unsupported architecture for AWS CLI installation: $(uname -m)" >&2
+      return 1
+      ;;
+  esac
+
+  require_cmd curl
+  require_cmd unzip
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' RETURN
+
+  curl --fail --silent --show-error --location \
+    "https://awscli.amazonaws.com/awscli-exe-linux-${arch}.zip" \
+    -o "${tmp_dir}/awscliv2.zip"
+  unzip -q "${tmp_dir}/awscliv2.zip" -d "$tmp_dir"
+  sudo "${tmp_dir}/aws/install" --update
+
+  rm -rf "$tmp_dir"
+  trap - RETURN
+
+  aws --version
+}
+
 ensure_runtime() {
-  require_cmd aws awscli
+  install_aws_cli
   require_cmd curl
   require_cmd jq
   require_cmd nginx
