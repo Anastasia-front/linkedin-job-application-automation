@@ -1,0 +1,45 @@
+{
+  "environment": "production",
+  "workflows": [
+    {
+      "file": "main-workflow.json",
+      "id": "MTS4wUh0YURi5WwU",
+      "name": "LinkedIn Job Application Automation"
+    },
+    {
+      "file": "subworkflow-fetch-jobs-or-get-from-disk.json",
+      "id": "MK3OlmgDHyttdWvL",
+      "name": "Subworkflow - Fetch Jobs Or Get From Disk"
+    },
+    {
+      "file": "subworkflow-evaluate-and-save-job.json",
+      "id": "NrGH6Tr8EFMwEpO0",
+      "name": "Subworkflow - Evaluate And Save Job"
+    },
+    {
+      "file": "subworkflow-apify-error-messages.json",
+      "id": "gLbwb5LpEIgzeUa2",
+      "name": "Subworkflow - Apify Error Messages"
+    },
+    {
+      "file": "subworkflow-success-messsages.json",
+      "id": "JSB4ldxh5lpeKNZI",
+      "name": "Subworkflow - Success Messages"
+    },
+    {
+      "file": "subworkflow-unsuccess-messages.json",
+      "id": "OBN6W1xv8afk8Hkn",
+      "name": "Subworkflow - Unsuccess Messages"
+    },
+    {
+      "file": "error-subworkflow-fetch-jobs-or-get-from-disk.json",
+      "id": "bdSF6e1MzCqymRmS",
+      "name": "Error Subworkflow - Fetch Jobs Or Get From Disk"
+    },
+    {
+      "file": "error-subworkflow-evaluate-and-save-job.json",
+      "id": "vrkHrZV92R6fqPXw",
+      "name": "Error Subworkflow - Evaluate And Save Job"
+    }
+  ]
+}
