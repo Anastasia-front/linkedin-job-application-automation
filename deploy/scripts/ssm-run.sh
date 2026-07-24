@@ -60,9 +60,13 @@ trap cleanup EXIT
   printf '%s\n' 'echo "SSM script completed at $(date -Is)"'
 } > "$WRAPPER"
 
-# Use a JSON file rather than complex CLI quoting.
+# Use a JSON file rather than complex CLI quoting. The wrapper script content
+# is read directly from disk with --rawfile (not `--arg command "$(cat ...)"`)
+# because passing it as a command-line argument is subject to the OS's
+# ARG_MAX and fails with "Argument list too long" once base64-embedded
+# payloads (e.g. workflow tars) push the wrapper past a few hundred KB.
 jq -n \
-  --arg command "$(cat "$WRAPPER")" \
+  --rawfile command "$WRAPPER" \
   --arg timeout "$REMOTE_TIMEOUT_SECONDS" \
   '{
     commands: [$command],
