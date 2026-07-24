@@ -126,3 +126,19 @@ module "ssm_demo" {
   nginx_origin_private_key         = var.n8n_demo_nginx_origin_private_key
   nginx_origin_private_key_version = var.n8n_demo_nginx_origin_private_key_version
 }
+
+# ---------------------------------------------------------------------------
+# Deploy-artifacts S3 bucket: transfers CI-generated workflow tars to EC2
+# when they're too large for the SSM RunCommand document size limit. One
+# bucket shared by both environments, split by IAM-enforced prefix — see
+# modules/s3/main.tf for the full rationale.
+# ---------------------------------------------------------------------------
+
+module "s3" {
+  source = "./modules/s3"
+
+  project_name   = var.project_name
+  environment    = var.environment
+  prod_role_name = module.iam.role_name
+  demo_role_name = var.n8n_demo_enabled ? module.iam_demo[0].role_name : null
+}

@@ -47,3 +47,17 @@ output "demo_cloudflare_dns_instruction" {
 output "demo_ssm_env_parameter_path" {
   value = var.n8n_demo_enabled ? module.ssm_demo[0].env_parameter_path : null
 }
+
+# ---------------------------------------------------------------------------
+# Deploy-artifacts bucket (shared by both environments — see modules/s3)
+# ---------------------------------------------------------------------------
+
+output "deploy_artifacts_bucket" {
+  value       = module.s3.bucket
+  description = "Set as the DEPLOY_ARTIFACTS_BUCKET GitHub Actions repository variable."
+}
+
+output "deploy_artifacts_write_ci_policy_arn" {
+  value       = module.s3.write_ci_policy_arn
+  description = "Attach this policy to the IAM identity behind the AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY GitHub secrets (manual step — that identity isn't managed by this Terraform config)."
+}

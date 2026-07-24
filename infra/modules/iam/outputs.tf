@@ -5,3 +5,7 @@ output "instance_profile_name" {
 output "ssm_parameter_arns" {
   value = local.ssm_parameter_arns
 }
+
+output "role_name" {
+  value = aws_iam_role.ec2_role.name
+}
