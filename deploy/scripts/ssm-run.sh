@@ -34,10 +34,16 @@ cleanup() {
 trap cleanup EXIT
 
 {
-  echo '#!/usr/bin/env bash'
-  echo 'set -Eeuo pipefail'
-  echo 'export PS4="+ [${BASH_SOURCE##*/}:${LINENO}] "'
-  echo 'echo "SSM script started at $(date -Is)"'
+  printf '%s\n' '#!/usr/bin/env bash'
+  printf '%s\n' 'set -Eeuo pipefail'
+
+  # These expressions must be expanded on the remote EC2 instance, not by
+  # this local helper while generating the wrapper script.
+  # shellcheck disable=SC2016
+  printf '%s\n' 'export PS4="+ [${BASH_SOURCE##*/}:${LINENO}] "'
+
+  # shellcheck disable=SC2016
+  printf '%s\n' 'echo "SSM script started at $(date -Is)"'
 
   if [[ -n "$ENV_FILE" && -f "$ENV_FILE" ]]; then
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -47,8 +53,11 @@ trap cleanup EXIT
 
   cat "$SCRIPT_PATH"
 
-  echo
-  echo 'echo "SSM script completed at $(date -Is)"'
+  printf '\n'
+
+  # This command must run on the remote EC2 instance.
+  # shellcheck disable=SC2016
+  printf '%s\n' 'echo "SSM script completed at $(date -Is)"'
 } > "$WRAPPER"
 
 # Use a JSON file rather than complex CLI quoting.
@@ -77,7 +86,7 @@ echo "SSM command id: ${COMMAND_ID}" >&2
 deadline=$((SECONDS + POLL_TIMEOUT_SECONDS))
 STATUS="Pending"
 
-while (( SECONDS < deadline )); do
+while ((SECONDS < deadline)); do
   if ! aws ssm get-command-invocation \
     --region "$REGION" \
     --command-id "$COMMAND_ID" \
@@ -106,11 +115,11 @@ while (( SECONDS < deadline )); do
       break
       ;;
 
-    Failed|Cancelled|TimedOut|Cancelling)
+    Failed | Cancelled | TimedOut | Cancelling)
       break
       ;;
 
-    Pending|InProgress|Delayed)
+    Pending | InProgress | Delayed)
       sleep "$POLL_INTERVAL_SECONDS"
       ;;
 
@@ -121,7 +130,9 @@ while (( SECONDS < deadline )); do
   esac
 done
 
-if [[ "$STATUS" == "Pending" || "$STATUS" == "InProgress" || "$STATUS" == "Delayed" ]]; then
+if [[ "$STATUS" == "Pending" ||
+      "$STATUS" == "InProgress" ||
+      "$STATUS" == "Delayed" ]]; then
   echo "Local polling timed out after ${POLL_TIMEOUT_SECONDS} seconds." >&2
   echo "Cancelling remote SSM command ${COMMAND_ID}." >&2
 
