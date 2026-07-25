@@ -22,6 +22,11 @@ Terraform lives in `infra/` and creates:
 
 The default AWS region is `eu-central-1`.
 
+The production EC2 root EBS volume defaults to `root_volume_size = 20` GiB. Terraform can
+increase an existing gp3 root volume in place, but do not reduce this value for an existing
+instance. Depending on the AMI and AWS-side resize behavior, a one-time filesystem expansion
+may still be required after increasing the block device.
+
 Do not commit real `terraform.tfvars` files. Use `infra/terraform.tfvars.example` as the shape only.
 
 ## SSM Parameters
@@ -129,14 +134,91 @@ Deployment order on EC2 (`deploy-production` job):
 4. validate PEM markers and install TLS files atomically
 5. install and test Nginx configuration
 6. preserve Docker volumes and previous image information
-7. pull the requested pinned n8n image
-8. start a candidate container on `127.0.0.1:5679`
-9. check `http://127.0.0.1:5679/health`
-10. replace the production container on `127.0.0.1:5678`
-11. check `http://127.0.0.1:5678/health`
-12. reload Nginx
-13. check `https://n8n.ai-automation-platform.com/health` through local Nginx resolution
-14. prune obsolete images
+7. print disk/Docker diagnostics and safely prune stopped containers, dangling images, build
+   cache, and unused networks
+8. remove older local n8n images that are not protected and not referenced by any container
+9. list unused volume candidates, but do not delete volumes by default
+10. verify at least `${MIN_FREE_DISK_MB:-2500}` MB is free on Docker's runtime filesystem
+11. pull the requested pinned n8n image
+12. start a candidate container on `127.0.0.1:5679`
+13. check `http://127.0.0.1:5679/health`
+14. replace the production container on `127.0.0.1:5678`
+15. check `http://127.0.0.1:5678/health`
+16. reload Nginx
+17. check `https://n8n.ai-automation-platform.com/health` through local Nginx resolution
+18. prune dangling layers and older unprotected n8n images again, then print final diagnostics
+
+## Docker Disk Cleanup
+
+The production deploy script acquires a local deployment lock before cleanup and replacement.
+Before pulling a new image it prints:
+
+```bash
+df -h
+df -i
+docker system df
+docker ps --all --no-trunc
+docker image ls --digests
+docker volume ls
+docker network ls
+sudo du -sh /var/lib/docker /var/lib/containerd 2>/dev/null
+```
+
+Automatic cleanup is intentionally narrow:
+
+- stopped containers: `docker container prune --force`
+- dangling images only: `docker image prune --force`
+- Docker builder cache: `docker builder prune --force`
+- Buildx cache when Buildx is installed: `docker buildx prune --force`
+- unused networks: `docker network prune --force`
+- older local images from the deployed n8n image repository, after exact image-ID retention checks
+
+The n8n image retention set always protects:
+
+- the image ID used by the running `linkedin-job-application-automation-n8n` container
+- the requested `N8N_IMAGE`
+- the image ID used by the candidate container, when present
+- `N8N_IMAGE_PREVIOUS`, when configured and present locally
+- the recorded `previous_image.txt` image, when present locally
+- any image ID used by any running container
+
+Older n8n image IDs outside that set are removed only if no container references them. This
+keeps the current image and one rollback image available while preventing old tagged n8n
+versions from accumulating on the small root disk.
+
+Volume cleanup is conservative. The deployment protects:
+
+- `linkedin-job-application-automation-n8n-data`
+- `linkedin-job-application-automation-n8n-files`
+- any volume referenced by any container
+- volumes whose names indicate n8n data, PostgreSQL, or database use
+
+`docker volume prune` and especially `docker system prune -a --volumes` are prohibited for
+production because they can remove persistent n8n data, credentials, encryption-key-backed
+SQLite state, database volumes, or volumes belonging to other applications on the host. The
+script logs unused volume candidates for manual review. `PRUNE_UNUSED_VOLUMES=false` is the
+default; setting it to `true` still does not delete anything unless this repository later
+documents an exact obsolete volume naming convention that can be proven safe.
+
+The free-space gate uses Docker's actual runtime root:
+
+```bash
+docker info --format '{{.DockerRootDir}}'
+```
+
+By default, at least `2500` MB must remain after cleanup and before pulling the new image.
+Override this per deployment with `MIN_FREE_DISK_MB=<megabytes>` only after confirming the
+image size and rollback needs. If a pull fails halfway through, the script cleans dangling
+Docker resources through supported Docker commands and prints diagnostics again; it never
+deletes files directly under `/var/lib/docker` or `/var/lib/containerd`.
+
+When cleanup is insufficient:
+
+1. increase `root_volume_size` in `infra/terraform.tfvars` and run `terraform plan`/`apply`
+2. confirm the filesystem sees the larger block device, expanding it manually if required
+3. inspect large runtime usage with the diagnostics above
+4. remove only reviewed, unreferenced, non-production volumes or images
+5. rerun the GitHub Actions deployment
 
 A separate `seed-production-workflows` job then runs after `deploy-production` and before
 `verify-production` — see [Workflow seeding](#workflow-seeding) below.

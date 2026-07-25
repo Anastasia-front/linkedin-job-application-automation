@@ -52,6 +52,7 @@ module "ec2" {
   security_group   = module.network.ec2_security_group_id
   instance_profile = module.iam.instance_profile_name
   user_data        = file("${path.module}/userdata.sh")
+  root_volume_size = var.root_volume_size
 }
 
 module "ssm" {

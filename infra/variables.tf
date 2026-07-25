@@ -50,6 +50,12 @@ variable "instance_type" {
   default = "t3.small"
 }
 
+variable "root_volume_size" {
+  description = "Root EBS volume size (GiB) for the production instance. Increase in place with Terraform; never lower this for an existing volume."
+  type        = number
+  default     = 20
+}
+
 variable "env_values" {
   description = "Application environment values stored under /linkedin-job-application-automation/env."
   type        = map(string)
