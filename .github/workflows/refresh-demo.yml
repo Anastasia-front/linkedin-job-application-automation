@@ -66,9 +66,23 @@ jobs:
       - name: Validate demo compose file
         run: |
           set -Eeuo pipefail
+
+          if [ ! -f ".env.demo.example" ]; then
+            echo "ERROR: .env.demo.example is missing from the checked-out repository root." >&2
+            echo "Current directory: $(pwd)" >&2
+            echo "Tracked environment example files:" >&2
+            git ls-files | grep -E '(^|/)\.env.*example$' >&2 || true
+            exit 1
+          fi
+
           cp .env.demo.example .env.demo
-          docker compose -f docker-compose.demo.yml --env-file .env.demo config >/dev/null
-          rm -f .env.demo
+
+          trap 'rm -f .env.demo' EXIT
+
+          docker compose \
+            -f docker-compose.demo.yml \
+            --env-file .env.demo \
+            config >/dev/null
 
       - name: Run sanitizer/validator unit tests
         run: |
