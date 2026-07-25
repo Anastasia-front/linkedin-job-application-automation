@@ -4,6 +4,8 @@ set -Eeuo pipefail
 : "${AWS_REGION:?AWS_REGION is required}"
 : "${N8N_IMAGE:?N8N_IMAGE is required}"
 : "${N8N_IMAGE_PREVIOUS:=}"
+: "${MIN_FREE_DISK_MB:=2500}"
+: "${PRUNE_UNUSED_VOLUMES:=false}"
 
 PROJECT_NAME="linkedin-job-application-automation"
 HOSTNAME="n8n.ai-automation-platform.com"
@@ -24,6 +26,15 @@ NGINX_SITE_NAME="${PROJECT_NAME}"
 SITE_AVAILABLE="/etc/nginx/sites-available/${NGINX_SITE_NAME}"
 SITE_ENABLED="/etc/nginx/sites-enabled/${NGINX_SITE_NAME}"
 HEALTH_PATH="/health"
+DEPLOY_LOCK_FILE="/tmp/${PROJECT_NAME}-deploy.lock"
+
+N8N_IMAGE_REPOSITORY="${N8N_IMAGE%%@*}"
+N8N_IMAGE_REPOSITORY="${N8N_IMAGE_REPOSITORY%%:*}"
+
+if ! [[ "$MIN_FREE_DISK_MB" =~ ^[0-9]+$ ]]; then
+  echo "MIN_FREE_DISK_MB must be a positive integer number of megabytes" >&2
+  exit 1
+fi
 
 require_cmd() {
   local cmd="$1"
@@ -181,6 +192,215 @@ wait_for() {
   return 1
 }
 
+print_disk_diagnostics() {
+  echo "--- disk usage ---"
+  df -h || true
+  df -i || true
+  docker system df || true
+  docker ps --all --no-trunc || true
+  docker image ls --digests || true
+  docker volume ls || true
+  docker network ls || true
+  sudo du -sh /var/lib/docker 2>/dev/null || true
+  sudo du -sh /var/lib/containerd 2>/dev/null || true
+}
+
+get_runtime_root() {
+  docker info --format '{{.DockerRootDir}}'
+}
+
+get_available_mb() {
+  local path="$1"
+  df -Pm "$path" | awk 'NR == 2 {print $4}'
+}
+
+image_id_for_ref() {
+  local image_ref="$1"
+  if [ -z "$image_ref" ]; then
+    return 0
+  fi
+  docker image inspect "$image_ref" --format '{{.Id}}' 2>/dev/null || true
+}
+
+container_image_id() {
+  local container="$1"
+  docker inspect "$container" --format '{{.Image}}' 2>/dev/null || true
+}
+
+running_container_image_ids() {
+  docker ps --format '{{.ID}}' |
+    while IFS= read -r container_id; do
+      [ -n "$container_id" ] || continue
+      docker inspect "$container_id" --format '{{.Image}}' 2>/dev/null || true
+    done |
+    sort -u
+}
+
+retain_image_id() {
+  local image_id="$1"
+  local reason="$2"
+  [ -n "$image_id" ] || return 0
+  case " ${PROTECTED_IMAGE_IDS[*]} " in
+    *" ${image_id} "*) ;;
+    *) PROTECTED_IMAGE_IDS+=("$image_id") ;;
+  esac
+  echo "Retaining image ${image_id} (${reason})"
+}
+
+collect_protected_image_ids() {
+  PROTECTED_IMAGE_IDS=()
+
+  retain_image_id "$(container_image_id "$CONTAINER_NAME")" "current production container"
+  retain_image_id "$(container_image_id "$NEXT_CONTAINER_NAME")" "candidate container"
+  retain_image_id "$(image_id_for_ref "$N8N_IMAGE")" "new deployment image"
+  retain_image_id "$(image_id_for_ref "$N8N_IMAGE_PREVIOUS")" "configured rollback image"
+  retain_image_id "$(image_id_for_ref "$(cat previous_image.txt 2>/dev/null || true)")" "recorded previous image"
+
+  while IFS= read -r image_id; do
+    retain_image_id "$image_id" "running container"
+  done < <(running_container_image_ids)
+}
+
+image_id_is_protected() {
+  local image_id="$1"
+  case " ${PROTECTED_IMAGE_IDS[*]} " in
+    *" ${image_id} "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+image_id_is_used_by_any_container() {
+  local image_id="$1"
+  docker ps --all --filter "ancestor=${image_id}" --format '{{.ID}}' | grep -q .
+}
+
+cleanup_stopped_containers() {
+  echo "--- pruning stopped containers ---"
+  docker container prune --force
+}
+
+cleanup_dangling_images() {
+  echo "--- pruning dangling images ---"
+  docker image prune --force
+}
+
+cleanup_build_cache() {
+  echo "--- pruning Docker builder cache ---"
+  docker builder prune --force
+  if docker buildx version >/dev/null 2>&1; then
+    docker buildx prune --force
+  else
+    echo "Buildx is unavailable; continuing."
+  fi
+}
+
+cleanup_unused_networks() {
+  echo "--- pruning unused networks ---"
+  docker network prune --force
+}
+
+cleanup_old_n8n_images() {
+  echo "--- cleaning old n8n images for repository ${N8N_IMAGE_REPOSITORY} ---"
+  collect_protected_image_ids
+
+  local image_ids
+  image_ids="$(docker image ls "$N8N_IMAGE_REPOSITORY" --format '{{.ID}}' | sort -u)"
+  if [ -z "$image_ids" ]; then
+    echo "No local n8n images found for ${N8N_IMAGE_REPOSITORY}."
+    return 0
+  fi
+
+  while IFS= read -r image_id; do
+    [ -n "$image_id" ] || continue
+    if image_id_is_protected "$image_id"; then
+      echo "Keeping n8n image ${image_id}: protected."
+      continue
+    fi
+    if image_id_is_used_by_any_container "$image_id"; then
+      echo "Keeping n8n image ${image_id}: still used by a container."
+      continue
+    fi
+    echo "Removing old n8n image ${image_id}."
+    docker image rm "$image_id" || echo "Image ${image_id} was already removed or is still referenced; continuing."
+  done <<< "$image_ids"
+}
+
+list_unused_volume_candidates() {
+  echo "--- unused volume candidates (diagnostic only by default) ---"
+  echo "Protected production volumes: ${DATA_VOLUME}, ${FILES_VOLUME}"
+  docker volume ls --format '{{.Name}}' |
+    while IFS= read -r volume_name; do
+      [ -n "$volume_name" ] || continue
+      case "$volume_name" in
+        "$DATA_VOLUME"|"$FILES_VOLUME"|*n8n*data*|*postgres*|*db*)
+          echo "Keeping volume ${volume_name}: protected by name/purpose."
+          continue
+          ;;
+      esac
+      if docker ps --all --filter "volume=${volume_name}" --format '{{.ID}}' | grep -q .; then
+        echo "Keeping volume ${volume_name}: referenced by a container."
+        continue
+      fi
+      echo "Unused volume candidate: ${volume_name}"
+    done
+}
+
+cleanup_proven_obsolete_volumes() {
+  list_unused_volume_candidates
+
+  if [ "$PRUNE_UNUSED_VOLUMES" != "true" ]; then
+    echo "PRUNE_UNUSED_VOLUMES is not true; no volumes will be removed."
+    return 0
+  fi
+
+  echo "PRUNE_UNUSED_VOLUMES=true, but this repository has no exact obsolete production volume naming convention to prune safely."
+  echo "Leaving volumes untouched."
+}
+
+assert_minimum_free_space() {
+  local runtime_root
+  local available_mb
+  local minimum_available_mb
+  runtime_root="$(get_runtime_root)"
+  available_mb="$(get_available_mb "$runtime_root")"
+  minimum_available_mb="$available_mb"
+
+  echo "Docker runtime root: ${runtime_root}"
+  echo "Available space on Docker filesystem: ${available_mb} MB"
+  if [ -d /var/lib/containerd ]; then
+    available_mb="$(get_available_mb /var/lib/containerd)"
+    echo "Available space on containerd filesystem: ${available_mb} MB"
+    if (( available_mb < minimum_available_mb )); then
+      minimum_available_mb="$available_mb"
+    fi
+  fi
+
+  if (( minimum_available_mb < MIN_FREE_DISK_MB )); then
+    echo "ERROR: Only ${minimum_available_mb} MB is available on the Docker/containerd filesystem after cleanup." >&2
+    echo "At least ${MIN_FREE_DISK_MB} MB is required before pulling the new n8n image." >&2
+    echo "Increase the EBS volume or remove additional unused resources." >&2
+    exit 1
+  fi
+}
+
+cleanup_docker_resources() {
+  print_disk_diagnostics
+  collect_protected_image_ids
+  cleanup_stopped_containers
+  cleanup_dangling_images
+  cleanup_build_cache
+  cleanup_unused_networks
+  cleanup_old_n8n_images
+  cleanup_proven_obsolete_volumes
+}
+
+cleanup_after_failed_pull() {
+  echo "Image pull failed; cleaning dangling Docker resources left by the failed pull."
+  cleanup_dangling_images || true
+  cleanup_build_cache || true
+  print_disk_diagnostics
+}
+
 run_n8n_container() {
   local name="$1"
   local image="$2"
@@ -197,6 +417,9 @@ run_n8n_container() {
     --health-timeout 10s \
     --health-retries 5 \
     --health-start-period 60s \
+    --log-driver json-file \
+    --log-opt max-size=10m \
+    --log-opt max-file=3 \
     --restart unless-stopped \
     "$image"
 }
@@ -223,6 +446,9 @@ restore_previous_container() {
 }
 
 main() {
+  exec 9>"$DEPLOY_LOCK_FILE"
+  flock 9
+
   mkdir -p "$DEPLOY_DIR"
   cd "$DEPLOY_DIR"
 
@@ -239,7 +465,13 @@ main() {
   PREVIOUS_IMAGE="$(docker inspect "$CONTAINER_NAME" --format='{{.Config.Image}}' 2>/dev/null || true)"
   echo "$PREVIOUS_IMAGE" > previous_image.txt
 
-  docker pull "$N8N_IMAGE"
+  cleanup_docker_resources
+  assert_minimum_free_space
+
+  if ! docker pull "$N8N_IMAGE"; then
+    cleanup_after_failed_pull
+    exit 1
+  fi
 
   docker stop "$NEXT_CONTAINER_NAME" 2>/dev/null || true
   docker rm "$NEXT_CONTAINER_NAME" 2>/dev/null || true
@@ -277,7 +509,9 @@ main() {
     exit 1
   fi
 
-  docker image prune -f
+  cleanup_dangling_images
+  cleanup_old_n8n_images
+  print_disk_diagnostics
 }
 
 main "$@"
