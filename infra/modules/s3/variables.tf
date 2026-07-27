@@ -2,6 +2,10 @@ variable "project_name" {
   type = string
 }
 
+variable "aws_region" {
+  type = string
+}
+
 variable "environment" {
   description = "Value for the Environment tag applied to the bucket."
   type        = string

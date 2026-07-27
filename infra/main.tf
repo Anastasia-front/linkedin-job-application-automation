@@ -138,6 +138,7 @@ module "ssm_demo" {
 module "s3" {
   source = "./modules/s3"
 
+  aws_region     = var.aws_region
   project_name   = var.project_name
   environment    = var.environment
   prod_role_name = module.iam.role_name

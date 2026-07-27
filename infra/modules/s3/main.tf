@@ -21,8 +21,11 @@
 # may reference credentials by id/name, but sanitize_workflows.py already
 # guarantees no credential values ever reach a workflow file, seeded or
 # sanitized, before it gets this far.
+
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "deploy_artifacts" {
-  bucket = "${var.project_name}-deploy-artifacts"
+  bucket = "n8n-linkedin-${data.aws_caller_identity.current.account_id}-${var.aws_region}-deploy-artifacts"
 
   tags = {
     Environment = var.environment
