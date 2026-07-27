@@ -12,8 +12,8 @@ name: Check for n8n updates
 # that deserve a human glance before hitting production.
 on:
   schedule:
-    # 06:00 UTC daily.
-    - cron: "0 6 * * *"
+# 06:00 UTC on the 1st day of every month.
+- cron: "0 6 1 * *"
   workflow_dispatch: {}
 
 permissions:
