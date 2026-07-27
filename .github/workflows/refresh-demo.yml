@@ -2,8 +2,16 @@ name: Refresh n8n Demo
 
 on:
   schedule:
-    # 0 2 * * * = 02:00 UTC every day (GitHub cron schedules always run in UTC).
-    - cron: "0 2 * * *"
+    # 0 2 * * 0 = 02:00 UTC every Sunday (GitHub cron schedules always run in
+    # UTC). Was daily; reduced to weekly to cut unnecessary CI/deploy runs on
+    # the AWS Free Tier. This only controls how often the full
+    # export-from-production -> sanitize -> redeploy -> reseed pipeline runs;
+    # it does not affect the demo host's own daily reset-from-seed timer
+    # (n8n-demo-reset.timer, configured in infra/variables.tf via
+    # n8n_demo_reset_hour/n8n_demo_reset_timezone — see
+    # docs/demo-environment.md section 10), which stays on its existing
+    # schedule and costs no CI/deploy time.
+    - cron: "0 2 * * 0"
   workflow_dispatch:
     inputs:
       n8n_image:
@@ -41,7 +49,17 @@ jobs:
           test -n "$INSTANCE_ID"
           test -n "$DEMO_INSTANCE_ID"
           test -n "$N8N_IMAGE"
-          test -n "$DEPLOY_ARTIFACTS_BUCKET"
+          # DEPLOY_ARTIFACTS_BUCKET is required for workflow-sync (uploading the
+          # sanitized workflow tar), but not for standing the demo host itself
+          # back up (infra/nginx/n8n/postgres) — that already runs without any
+          # workflows imported when there's nothing to import (see
+          # build_demo_seed.sh: "no sanitized workflows to import, seeding an
+          # empty (but usable) demo instance"). Warn, don't block, so a missing
+          # or not-yet-provisioned bucket can never take down the whole demo
+          # refresh — see the "Upload sanitized workflows to S3" step below.
+          if [ -z "$DEPLOY_ARTIFACTS_BUCKET" ]; then
+            echo "::warning::DEPLOY_ARTIFACTS_BUCKET is not set — this run will refresh demo infra/n8n but skip workflow sync."
+          fi
           test -n "${{ secrets.AWS_ACCESS_KEY_ID }}"
           test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
 
@@ -228,13 +246,32 @@ jobs:
       # S3 instead of being embedded like the small config files below.
       # Uploaded under demo/ only — the demo EC2 role can only read that
       # prefix (infra/modules/s3).
+      #
+      # Deliberately non-fatal: if DEPLOY_ARTIFACTS_BUCKET isn't set, or the
+      # upload fails (e.g. the write policy — infra/modules/s3's
+      # deploy_artifacts_write_ci_policy_arn output — hasn't been attached to
+      # this CI identity yet), skip workflow sync for this run rather than
+      # blocking the whole demo refresh over it. deploy-n8n-demo.sh already
+      # treats an empty WORKFLOWS_S3_URI as "nothing to import" (the same
+      # optional-import path build_demo_seed.sh already supports), so the
+      # host still gets a healthy infra/n8n/postgres refresh either way.
       - name: Upload sanitized workflows to S3
         id: upload
         run: |
           set -Eeuo pipefail
+          if [ -z "${DEPLOY_ARTIFACTS_BUCKET:-}" ]; then
+            echo "::warning::DEPLOY_ARTIFACTS_BUCKET not set, skipping workflow sync for this run."
+            echo "s3_uri=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           key="demo/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-sanitized-workflows.tar"
-          aws s3 cp --region "$AWS_REGION" /tmp/artifact/sanitized-workflows.tar "s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}"
-          echo "s3_uri=s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}" >> "$GITHUB_OUTPUT"
+          if aws s3 cp --region "$AWS_REGION" /tmp/artifact/sanitized-workflows.tar "s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}"; then
+            echo "s3_uri=s3://${DEPLOY_ARTIFACTS_BUCKET}/${key}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Upload to s3://${DEPLOY_ARTIFACTS_BUCKET}/${key} failed (check the write-CI IAM policy is attached), skipping workflow sync for this run."
+            echo "s3_uri=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Deploy demo stack via SSM
         run: |
@@ -276,7 +313,10 @@ jobs:
         if: always()
         run: |
           set -Eeuo pipefail
-          aws s3 rm --region "$AWS_REGION" "${{ steps.upload.outputs.s3_uri }}" || true
+          uri="${{ steps.upload.outputs.s3_uri }}"
+          if [ -n "$uri" ]; then
+            aws s3 rm --region "$AWS_REGION" "$uri" || true
+          fi
 
   # ---------------------------------------------------------------------
   # 5. Build the clean demo seed and immediately reset from it, proving the
