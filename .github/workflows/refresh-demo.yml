@@ -170,16 +170,24 @@ jobs:
           cat > /tmp/export.sh <<'REMOTE'
           CONTAINER=linkedin-job-application-automation-n8n
           EXPORT_DIR=/home/node/.n8n-files/ci-export
-          docker exec "$CONTAINER" rm -rf "$EXPORT_DIR"
-          docker exec "$CONTAINER" mkdir -p "$EXPORT_DIR"
+          # n8n's container process runs as a non-root user that doesn't own
+          # /home/node/.n8n-files (a Docker named volume), so plain `docker
+          # exec` can't create a new directory under it. Create/remove it as
+          # root, then open it up (0777) so the n8n process can write into it
+          # — safe here because it's transient (deleted a few lines below,
+          # within the same job) and contains nothing but the export this
+          # step itself produces.
+          docker exec -u root "$CONTAINER" rm -rf "$EXPORT_DIR"
+          docker exec -u root "$CONTAINER" mkdir -p "$EXPORT_DIR"
+          docker exec -u root "$CONTAINER" chmod 0777 "$EXPORT_DIR"
           docker exec "$CONTAINER" n8n export:workflow --help > /tmp/export-help.txt 2>&1 || true
           if ! grep -q -- '--separate' /tmp/export-help.txt || ! grep -q -- '--output' /tmp/export-help.txt; then
             echo "n8n export:workflow --help does not advertise --separate/--output on this pinned image" >&2
             exit 1
           fi
           docker exec "$CONTAINER" n8n export:workflow --all --separate --output="$EXPORT_DIR"
-          docker exec "$CONTAINER" tar -C "$EXPORT_DIR" -cf - . | base64 -w 0
-          docker exec "$CONTAINER" rm -rf "$EXPORT_DIR"
+          docker exec -u root "$CONTAINER" tar -C "$EXPORT_DIR" -cf - . | base64 -w 0
+          docker exec -u root "$CONTAINER" rm -rf "$EXPORT_DIR"
           REMOTE
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/export.sh /tmp/export-blob-b64.txt
           mkdir -p /tmp/raw-export
