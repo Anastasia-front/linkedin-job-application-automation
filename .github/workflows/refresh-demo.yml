@@ -191,8 +191,16 @@ jobs:
           REMOTE
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/export.sh /tmp/export-blob-b64.txt
           mkdir -p /tmp/raw-export
-          base64 -d /tmp/export-blob-b64.txt | tar -x -C /tmp/raw-export
-          rm -f /tmp/export-blob-b64.txt /tmp/export.sh
+          # ssm-run.sh's wrapper always prints "SSM script started/completed at
+          # ..." banner lines around the remote script's own output, so the
+          # captured stdout is NOT pure base64 — extract just the one line
+          # that actually looks like base64 (the `tar | base64 -w0` output is
+          # a single unbroken line; nothing else in this script's output can
+          # match that shape) instead of decoding the whole file.
+          grep -E '^[A-Za-z0-9+/]+=*$' /tmp/export-blob-b64.txt | tail -1 > /tmp/export-blob-b64-clean.txt
+          [ -s /tmp/export-blob-b64-clean.txt ] || { echo "No base64 workflow export payload found in SSM output" >&2; exit 1; }
+          base64 -d /tmp/export-blob-b64-clean.txt | tar -x -C /tmp/raw-export
+          rm -f /tmp/export-blob-b64.txt /tmp/export-blob-b64-clean.txt /tmp/export.sh
           echo "Exported $(find /tmp/raw-export -name '*.json' | wc -l) workflow file(s) (contents not printed)."
 
       - name: Sanitize exported workflows
