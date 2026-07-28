@@ -167,6 +167,22 @@ jobs:
         run: |
           set -Eeuo pipefail
           chmod +x deploy/scripts/ssm-run.sh
+
+          # AWS SSM's GetCommandInvocation API truncates captured stdout at
+          # ~24,000 characters. This repo's actual workflow export, base64-
+          # encoded, is comfortably over that (confirm with:
+          # `tar -C workflows -cf - . | base64 -w0 | wc -c`), so it cannot be
+          # returned as SSM command output the way this pipeline's small
+          # outputs (health checks, seeded-workflow counts) are — it would
+          # come back silently truncated, and printing it inline into a public
+          # CI log would leak workflow contents to log storage besides. Route
+          # it through S3 instead, the same way the S3->EC2 direction already
+          # works for the sanitized-workflow and seed-manifest transfers:
+          # the production host uploads the tar itself (its IAM role only has
+          # GetObject/PutObject on production/*, never demo/*), CI downloads
+          # and deletes it.
+          export_key="production/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-raw-export.tar"
+
           cat > /tmp/export.sh <<'REMOTE'
           CONTAINER=linkedin-job-application-automation-n8n
           EXPORT_DIR=/home/node/.n8n-files/ci-export
@@ -186,21 +202,31 @@ jobs:
             exit 1
           fi
           docker exec "$CONTAINER" n8n export:workflow --all --separate --output="$EXPORT_DIR"
-          docker exec -u root "$CONTAINER" tar -C "$EXPORT_DIR" -cf - . | base64 -w 0
+          # `docker exec ... tar -cf /some/path` would write that file inside
+          # the CONTAINER's filesystem, not the host's — `aws` (running on
+          # the host, not in the container) could never see it there. Stream
+          # tar's stdout straight to `aws s3 cp -` (reads from stdin) instead,
+          # so the tar bytes cross from container -> host -> S3 in one
+          # pipeline with no intermediate file on either side.
+          docker exec -u root "$CONTAINER" tar -C "$EXPORT_DIR" -cf - . \
+            | aws s3 cp --region "$AWS_REGION" - "s3://${DEPLOY_ARTIFACTS_BUCKET}/${EXPORT_KEY}"
           docker exec -u root "$CONTAINER" rm -rf "$EXPORT_DIR"
           REMOTE
-          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/export.sh /tmp/export-blob-b64.txt
+
+          cat > /tmp/export-env.txt <<EOF
+          AWS_REGION="${AWS_REGION}"
+          DEPLOY_ARTIFACTS_BUCKET="${DEPLOY_ARTIFACTS_BUCKET}"
+          EXPORT_KEY="${export_key}"
+          EOF
+
+          deploy/scripts/ssm-run.sh "$AWS_REGION" "$INSTANCE_ID" /tmp/export.sh /tmp/export-stdout.txt /tmp/export-env.txt
+          cat /tmp/export-stdout.txt
+
           mkdir -p /tmp/raw-export
-          # ssm-run.sh's wrapper always prints "SSM script started/completed at
-          # ..." banner lines around the remote script's own output, so the
-          # captured stdout is NOT pure base64 — extract just the one line
-          # that actually looks like base64 (the `tar | base64 -w0` output is
-          # a single unbroken line; nothing else in this script's output can
-          # match that shape) instead of decoding the whole file.
-          grep -E '^[A-Za-z0-9+/]+=*$' /tmp/export-blob-b64.txt | tail -1 > /tmp/export-blob-b64-clean.txt
-          [ -s /tmp/export-blob-b64-clean.txt ] || { echo "No base64 workflow export payload found in SSM output" >&2; exit 1; }
-          base64 -d /tmp/export-blob-b64-clean.txt | tar -x -C /tmp/raw-export
-          rm -f /tmp/export-blob-b64.txt /tmp/export-blob-b64-clean.txt /tmp/export.sh
+          aws s3 cp --region "$AWS_REGION" "s3://${DEPLOY_ARTIFACTS_BUCKET}/${export_key}" /tmp/raw-export.tar
+          aws s3 rm --region "$AWS_REGION" "s3://${DEPLOY_ARTIFACTS_BUCKET}/${export_key}" || true
+          tar -x -C /tmp/raw-export -f /tmp/raw-export.tar
+          rm -f /tmp/raw-export.tar /tmp/export-stdout.txt /tmp/export-env.txt /tmp/export.sh
           echo "Exported $(find /tmp/raw-export -name '*.json' | wc -l) workflow file(s) (contents not printed)."
 
       - name: Sanitize exported workflows
