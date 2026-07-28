@@ -88,8 +88,15 @@ resource "aws_iam_policy" "deploy_artifacts_read_prod" {
     Version = "2012-10-17"
     Statement = [
       {
+        # GetObject: seed-n8n-workflows.sh downloads the manifest tar CI
+        # uploaded. PutObject: the demo-refresh export step uploads the raw
+        # workflow export tar here itself — AWS SSM's GetCommandInvocation
+        # API truncates captured stdout at ~24,000 characters, and this
+        # repo's actual workflow tar is well over that once base64-encoded,
+        # so it can no longer be returned as SSM command output the way the
+        # rest of this pipeline's small outputs are.
         Effect   = "Allow"
-        Action   = ["s3:GetObject"]
+        Action   = ["s3:GetObject", "s3:PutObject"]
         Resource = "${aws_s3_bucket.deploy_artifacts.arn}/production/*"
       }
     ]
@@ -128,9 +135,11 @@ resource "aws_iam_role_policy_attachment" "deploy_artifacts_read_demo" {
 # identity (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY secrets) that this
 # Terraform config does not create or manage — attach this policy to that
 # identity by hand (see docs/aws-production-deployment.md#workflow-seeding).
-# Deliberately scoped to PutObject/DeleteObject only (no GetObject, no
-# ListBucket, no admin actions), and only under the two prefixes CI actually
-# writes to.
+# PutObject/DeleteObject under both prefixes CI writes to (sanitized demo
+# tar, production manifest tar). GetObject under production/* only, so CI
+# can download the raw workflow export the production host uploads there
+# itself (see deploy_artifacts_read_prod above) — no ListBucket, no admin
+# actions, no GetObject under demo/* (CI never needs to read that back).
 # ---------------------------------------------------------------------------
 
 resource "aws_iam_policy" "deploy_artifacts_write_ci" {
@@ -149,6 +158,11 @@ resource "aws_iam_policy" "deploy_artifacts_write_ci" {
           "${aws_s3_bucket.deploy_artifacts.arn}/production/*",
           "${aws_s3_bucket.deploy_artifacts.arn}/demo/*"
         ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.deploy_artifacts.arn}/production/*"
       }
     ]
   })
