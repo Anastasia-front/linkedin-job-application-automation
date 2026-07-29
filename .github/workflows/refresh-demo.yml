@@ -383,25 +383,59 @@ jobs:
           set -Eeuo pipefail
           chmod +x deploy/scripts/ssm-run.sh
           cat > /tmp/build-seed.sh <<'REMOTE'
+          # build_demo_seed.sh redirects all of its own output to
+          # /var/log/n8n-demo-reset.log rather than stdout (so its logs
+          # survive independently of any single CI run — see the script's
+          # own header comment). If it (or the reset script) fails, we still
+          # need that log tail printed BEFORE this remote script exits, or
+          # the CI step captures nothing useful to debug from — so run both
+          # under `|| true`, capture the real exit code, print diagnostics
+          # unconditionally, then fail for real afterward if either did.
+          set +e
           /opt/n8n-demo/scripts/build_demo_seed.sh
-          /usr/local/sbin/reset-n8n-demo.sh
-          tail -n 40 /var/log/n8n-demo-reset.log
-          cat /opt/n8n-demo/seed/metadata.json
+          seed_rc=$?
+          reset_rc=0
+          if [ "$seed_rc" -eq 0 ]; then
+            /usr/local/sbin/reset-n8n-demo.sh
+            reset_rc=$?
+          fi
+          set -e
+
+          echo "--- build_demo_seed.sh exit code: ${seed_rc} ---"
+          echo "--- reset-n8n-demo.sh exit code: ${reset_rc} (0 = skipped because seed build failed) ---"
+          echo "--- tail -n 80 /var/log/n8n-demo-reset.log ---"
+          tail -n 80 /var/log/n8n-demo-reset.log 2>&1 || echo "(log file not found)"
+          echo "--- metadata.json ---"
+          cat /opt/n8n-demo/seed/metadata.json 2>&1 || echo "(metadata.json not found)"
+
+          if [ "$seed_rc" -ne 0 ] || [ "$reset_rc" -ne 0 ]; then
+            exit 1
+          fi
           REMOTE
           cat > /tmp/build-seed-env.txt <<EOF
           GIT_COMMIT="${GITHUB_SHA}"
           N8N_IMAGE_TAG="${N8N_IMAGE}"
           EOF
+
+          # Same reasoning as the REMOTE script above, one level up: if
+          # ssm-run.sh itself returns non-zero, don't let `set -e` skip past
+          # printing whatever it *did* capture — that's the only diagnostic
+          # trail we get.
+          set +e
           deploy/scripts/ssm-run.sh "$AWS_REGION" "$DEMO_INSTANCE_ID" /tmp/build-seed.sh /tmp/build-seed-stdout.txt /tmp/build-seed-env.txt
-          cat /tmp/build-seed-stdout.txt
+          run_rc=$?
+          set -e
+          cat /tmp/build-seed-stdout.txt 2>&1 || true
 
           # metadata.json (printed by the REMOTE script above) carries
           # workflow_count; fall back to "unknown" rather than failing the
           # job on a parsing hiccup — this is a summary field, not a gate.
-          seeded_count="$(grep -o '"workflow_count": *[0-9]*' /tmp/build-seed-stdout.txt | tail -1 | grep -o '[0-9]*$' || true)"
+          seeded_count="$(grep -o '"workflow_count": *[0-9]*' /tmp/build-seed-stdout.txt 2>/dev/null | tail -1 | grep -o '[0-9]*$' || true)"
           echo "seeded_count=${seeded_count:-unknown}" >> "$GITHUB_OUTPUT"
 
           rm -f /tmp/build-seed.sh /tmp/build-seed-env.txt /tmp/build-seed-stdout.txt
+
+          exit "$run_rc"
 
   # ---------------------------------------------------------------------
   # 6. Verify demo externally (public hostname, no Cloudflare Access in front
