@@ -155,6 +155,7 @@ install_nginx_config() {
   sudo install -d -m 755 -o root -g root /etc/nginx/sites-available /etc/nginx/sites-enabled
   sudo install -o root -g root -m 0644 "${DEMO_DIR}/${NGINX_SITE_NAME}.conf" "$SITE_AVAILABLE"
   sudo ln -sfn "$SITE_AVAILABLE" "$SITE_ENABLED"
+  sudo rm -f /etc/nginx/sites-enabled/default
   sudo nginx -t
 }
 
