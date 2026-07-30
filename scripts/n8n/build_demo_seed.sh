@@ -112,6 +112,15 @@ main() {
     done
     [ -n "$postgres_healthy" ] || fail "postgres did not become healthy"
 
+    # n8n may already be running (e.g. left up by the deploy step that ran
+    # just before this one), actively connected to $db_name — even after
+    # pg_terminate_backend below, a live n8n process reconnects fast enough
+    # to still be holding the database when dropdb runs a moment later
+    # ("database is being accessed by other users"). Stop it first so there
+    # is nothing left to reconnect; it comes back up right after createdb.
+    log "stopping n8n before recreating the database"
+    dc stop "$N8N_SERVICE" || true
+
     log "recreating a clean database: ${db_name}"
     dc exec -T "$POSTGRES_SERVICE" psql -U "$db_user" -d postgres -v ON_ERROR_STOP=1 -c \
       "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${db_name}' AND pid <> pg_backend_pid();" || true
@@ -141,19 +150,29 @@ main() {
 
       # The demo's workflow set is whatever sanitize_workflows.py produced from
       # today's production export, not a fixed repository manifest — so build a
-      # manifest on the fly from the sanitized files' own deterministic ids
-      # (same ids as production, since the sanitizer preserves them) and hand it
-      # to the same seed-n8n-workflows.sh production uses, for one shared
-      # import/verify implementation instead of two.
-      local wf_file
+      # manifest on the fly and hand it to the same seed-n8n-workflows.sh
+      # production uses, for one shared import/verify implementation instead
+      # of two. sanitize_workflows.py deliberately strips each workflow's
+      # "id" field (never leak production ids to the public demo), so unlike
+      # production's own files there is no id to read here — inject a fresh,
+      # stable-for-this-build id into each file instead. Reassigning ids on
+      # every build is safe only because this database is dropped and
+      # recreated from scratch on every single run (see above); there is
+      # never an existing row for a repeated id to collide with.
+      local wf_file wf_id wf_name idx=0
       demo_manifest="$(mktemp)"
       trap 'rm -f "$demo_manifest"' RETURN
       jq -n '{environment: "demo", workflows: []}' > "$demo_manifest"
       for wf_file in "$IMPORTS_DIR"/*.json; do
         [ -f "$wf_file" ] || continue
-        jq --arg file "$(basename "$wf_file")" \
-           --arg id "$(jq -r '.id' "$wf_file")" \
-           --arg name "$(jq -r '.name' "$wf_file")" \
+        idx=$((idx + 1))
+        wf_id="$(printf 'demo-workflow-%03d' "$idx")"
+        wf_name="$(jq -r '.name // "Untitled"' "$wf_file")"
+
+        jq --arg id "$wf_id" '.id = $id' "$wf_file" > "${wf_file}.tmp"
+        mv "${wf_file}.tmp" "$wf_file"
+
+        jq --arg file "$(basename "$wf_file")" --arg id "$wf_id" --arg name "$wf_name" \
            '.workflows += [{id: $id, file: $file, name: $name}]' \
            "$demo_manifest" > "${demo_manifest}.tmp"
         mv "${demo_manifest}.tmp" "$demo_manifest"
