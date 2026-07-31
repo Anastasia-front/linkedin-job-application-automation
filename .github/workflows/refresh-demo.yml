@@ -462,7 +462,12 @@ jobs:
       # the gate above failed (e.g. a Cloudflare 521 usually means nginx is
       # down, not listening on 443, or the n8n container/health check is
       # unhealthy on the demo host) — the gate itself already recorded
-      # success/failure before this step runs.
+      # success/failure before this step runs. Needs its own checkout: this
+      # job never had one (the health-check step above only needs `curl`),
+      # and deploy/scripts/ssm-run.sh below only exists once the repo is
+      # actually on the runner.
+      - uses: actions/checkout@v4
+        if: always()
       - uses: aws-actions/configure-aws-credentials@v4
         if: always()
         with:
