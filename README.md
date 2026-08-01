@@ -4,6 +4,17 @@
 
 Built with **n8n** + LLMs + Apify + PhantomBuster.
 
+## 🌐 Try the live demo
+
+**[demo-n8n.ai-automation-platform.com](https://demo-n8n.ai-automation-platform.com)**
+
+Log in with the shared demo account:
+
+- **Email**: `demo@ai-automation-platform.com`
+- **Password**: `see internal notes in .env.demo.example — replace this placeholder with the current DEMO_USER_PASSWORD`
+
+This is a fully isolated, sanitized instance — no real credentials, no production data, and it resets to a clean state on a regular schedule, so feel free to explore and edit freely. See [docs/demo-environment.md](docs/demo-environment.md) for how the isolation and reset process work.
+
 - before refactoring
   ![Workflow Screenshot](screenshots/workflows/workflow-full.png)
 
