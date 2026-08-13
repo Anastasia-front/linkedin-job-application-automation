@@ -19,6 +19,14 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # The version bump edits pinned-image fallback strings inside
+  # .github/workflows/*.yml itself (deploy-production.yml, refresh-demo.yml).
+  # GitHub requires this separate scope for the default GITHUB_TOKEN to
+  # push any change touching files under .github/workflows/ — contents:
+  # write alone is not sufficient and the push is silently rejected
+  # ("refusing to allow a GitHub App to create or update workflow ...
+  # without `workflows` permission") without it.
+  workflows: write
 
 concurrency:
   group: n8n-version-check
