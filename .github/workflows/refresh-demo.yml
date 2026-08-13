@@ -1,17 +1,16 @@
 name: Refresh n8n Demo
 
 on:
-  schedule:
-    # 0 2 * * 0 = 02:00 UTC every Sunday (GitHub cron schedules always run in
-    # UTC). Was daily; reduced to weekly to cut unnecessary CI/deploy runs on
-    # the AWS Free Tier. This only controls how often the full
-    # export-from-production -> sanitize -> redeploy -> reseed pipeline runs;
-    # it does not affect the demo host's own daily reset-from-seed timer
-    # (n8n-demo-reset.timer, configured in infra/variables.tf via
-    # n8n_demo_reset_hour/n8n_demo_reset_timezone — see
-    # docs/demo-environment.md section 10), which stays on its existing
-    # schedule and costs no CI/deploy time.
-    - cron: "0 2 * * 0"
+  # Scheduled weekly trigger disabled — this workflow now only runs via
+  # manual workflow_dispatch. It previously ran on:
+  #   schedule:
+  #     - cron: "0 2 * * 0"  # 02:00 UTC every Sunday
+  # This only controls how often the full export-from-production ->
+  # sanitize -> redeploy -> reseed pipeline runs; it does not affect the
+  # demo host's own daily reset-from-seed timer (n8n-demo-reset.timer,
+  # configured in infra/variables.tf via n8n_demo_reset_hour/
+  # n8n_demo_reset_timezone — see docs/demo-environment.md section 10),
+  # which stays on its existing schedule and costs no CI/deploy time.
   workflow_dispatch:
     inputs:
       n8n_image:
